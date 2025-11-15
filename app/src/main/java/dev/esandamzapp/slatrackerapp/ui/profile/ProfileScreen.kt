@@ -6,6 +6,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -20,10 +21,19 @@ import androidx.compose.ui.unit.sp
 import dev.esandamzapp.slatrackerapp.R
 
 // ===============================================================
-// ⭐ PROFILE SCREEN COMPLETO (ESTILO iOS / PREMIUM MOCKUP)
+// ⭐ PROFILE SCREEN COMPLETO
 // ===============================================================
 @Composable
-fun ProfileScreen() {
+fun ProfileScreen(
+    onNotifications: () -> Unit = {},
+    onReports: () -> Unit = {},
+    onLinks: () -> Unit = {},
+    onSettings: () -> Unit = {},
+    onSecurity: () -> Unit = {},
+    onHelpCenter: () -> Unit = {},
+    onReportProblem: () -> Unit = {},
+    onLogout: () -> Unit = {}
+) {
 
     Column(
         modifier = Modifier
@@ -40,7 +50,6 @@ fun ProfileScreen() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            // FOTO
             Image(
                 painter = painterResource(id = R.drawable.alexa),
                 contentDescription = "Profile",
@@ -54,7 +63,6 @@ fun ProfileScreen() {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // NOMBRE
             Text(
                 "Alexa Grasso",
                 fontSize = 22.sp,
@@ -64,7 +72,6 @@ fun ProfileScreen() {
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // CORREO EN CAJITA SUAVE
             Box(
                 modifier = Modifier
                     .background(Color(0xFFDDEAF5), RoundedCornerShape(20.dp))
@@ -117,7 +124,7 @@ fun ProfileScreen() {
         Spacer(modifier = Modifier.height(26.dp))
 
         // ======================================================
-        // CARD DEL MENÚ
+        // MENÚ PRINCIPAL
         // ======================================================
         Card(
             modifier = Modifier
@@ -130,45 +137,65 @@ fun ProfileScreen() {
 
             Column(modifier = Modifier.padding(10.dp)) {
 
-                MenuItemCard(R.drawable.ic_notifications, "Notifications")
+                MenuItemCard(R.drawable.ic_notifications, "Notifications") { onNotifications() }
                 Divider(color = Color(0xFFEAEAEA))
 
-                MenuItemCard(R.drawable.ic_reports, "Reports")
+                MenuItemCard(R.drawable.ic_reports, "Reports") { onReports() }
                 Divider(color = Color(0xFFEAEAEA))
 
-                MenuItemCard(R.drawable.ic_links, "Links of Interest")
+                MenuItemCard(R.drawable.ic_links, "Links of Interest") { onLinks() }
             }
         }
 
         Spacer(modifier = Modifier.height(26.dp))
 
         // ======================================================
-        // LOGOUT CLEAN — ESTILO iOS
+        // CONFIGURACIÓN
         // ======================================================
-        Row(
+        Card(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 34.dp)
-                .clickable { },
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 20.dp)
+                .fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            elevation = CardDefaults.cardElevation(2.dp),
+            colors = CardDefaults.cardColors(Color.White)
         ) {
+            Column {
+                MenuItemCard(R.drawable.ic_settings, "Configuración") { onSettings() }
+                Divider(color = Color(0xFFEAEAEA))
 
-            Icon(
-                painter = painterResource(id = R.drawable.ic_logout),
-                contentDescription = null,
-                tint = Color(0xFFE53935),
-                modifier = Modifier.size(22.dp)
-            )
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Text(
-                "Logout",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color(0xFFE53935)
-            )
+                MenuItemCard(R.drawable.ic_security, "Seguridad") { onSecurity() }
+            }
         }
+
+        Spacer(modifier = Modifier.height(26.dp))
+
+        // ======================================================
+        // SOPORTE
+        // ======================================================
+        Card(
+            modifier = Modifier
+                .padding(horizontal = 20.dp)
+                .fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            elevation = CardDefaults.cardElevation(2.dp),
+            colors = CardDefaults.cardColors(Color.White)
+        ) {
+            Column {
+
+                MenuItemCard(R.drawable.ic_help, "Centro de Ayuda") { onHelpCenter() }
+                Divider(color = Color(0xFFEAEAEA))
+
+                MenuItemCard(R.drawable.ic_bug, "Reportar un problema") { onReportProblem() }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(26.dp))
+
+        // ======================================================
+        // LOGOUT PREMIUM
+        // ======================================================
+        LogoutButton { onLogout() }
 
         Spacer(modifier = Modifier.height(40.dp))
     }
@@ -213,40 +240,94 @@ fun InfoRow(icon: Int, label: String, value: String) {
 }
 
 // ===============================================================
-// ⭐ MENÚ (ITEMS)
+// ⭐ MENÚ / ITEMS CLICKEABLES
 // ===============================================================
 @Composable
-fun MenuItemCard(icon: Int, title: String) {
+fun MenuItemCard(icon: Int, title: String, onClick: () -> Unit) {
 
-    Row(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 14.dp)
-            .clickable { },
-        verticalAlignment = Alignment.CenterVertically
+            .height(54.dp)
+            .clickable(onClick = onClick),
+        color = Color.White
     ) {
 
-        Icon(
-            painter = painterResource(id = icon),
-            contentDescription = title,
-            tint = Color(0xFF363636),
-            modifier = Modifier.size(22.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
 
-        Spacer(modifier = Modifier.width(18.dp))
+            Icon(
+                painter = painterResource(id = icon),
+                contentDescription = title,
+                tint = Color(0xFF2C2C2C),
+                modifier = Modifier.size(22.dp)
+            )
 
-        Text(
-            title,
-            fontSize = 17.sp,
-            color = Color(0xFF1A1A1A),
-            modifier = Modifier.weight(1f)
-        )
+            Spacer(modifier = Modifier.width(18.dp))
 
-        Icon(
-            painter = painterResource(id = R.drawable.ic_arrow_forward),
-            contentDescription = null,
-            tint = Color(0xFF999999),
-            modifier = Modifier.size(20.dp)
-        )
+            Text(
+                title,
+                fontSize = 16.sp,
+                color = Color(0xFF1A1A1A),
+                modifier = Modifier.weight(1f),
+                fontWeight = FontWeight.Medium
+            )
+
+            Icon(
+                painter = painterResource(id = R.drawable.ic_arrow_forward),
+                contentDescription = null,
+                tint = Color(0xFFB4B4B4),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+// ===============================================================
+// ⭐ BOTÓN LOGOUT PREMIUM
+// ===============================================================
+@Composable
+fun LogoutButton(onClick: () -> Unit) {
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .height(52.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick),
+        color = Color(0xFFFFEBEE),
+        tonalElevation = 0.dp,
+        shadowElevation = 1.dp,
+        border = BorderStroke(1.dp, Color(0xFFFFCDD2))
+    ) {
+
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            Icon(
+                painter = painterResource(id = R.drawable.ic_logout),
+                contentDescription = null,
+                tint = Color(0xFFD32F2F),
+                modifier = Modifier.size(22.dp)
+            )
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Text(
+                "Logout",
+                fontSize = 17.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFFD32F2F)
+            )
+        }
     }
 }
