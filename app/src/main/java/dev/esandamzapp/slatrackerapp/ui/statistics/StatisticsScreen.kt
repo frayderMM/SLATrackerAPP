@@ -1,3 +1,14 @@
+package dev.esandamzapp.slatrackerapp.ui.statistics
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
 package com.example.app.ui.statistics
 
 import androidx.compose.foundation.BorderStroke
@@ -18,6 +29,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.esandamzapp.slatrackerapp.ui.theme.SLATrackerAPPTheme
+
 
 // Colores inspirados en tu Figma (azul + naranja + lilas)
 private val HeaderBlue = Color(0xFF071C4D)
