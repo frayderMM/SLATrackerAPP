@@ -19,16 +19,17 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.compose.rememberNavController
 import dev.esandamzapp.slatrackerapp.R
 
 
 
 @Composable
-fun LoginScreen() {
+fun LoginScreen( ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-
+    val navController = rememberNavController()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -129,7 +130,9 @@ fun LoginScreen() {
 
         // Login Button
         Button(
-            onClick = { /* TODO */ },
+            onClick = { //navegar home
+                navController.navigate("home") {}
+                 },
             modifier = Modifier
                 .width(350.dp)
                 .padding(vertical = 24.dp),
