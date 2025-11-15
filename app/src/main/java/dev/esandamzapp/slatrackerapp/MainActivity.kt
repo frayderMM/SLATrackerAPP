@@ -11,6 +11,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import dev.esandamzapp.slatrackerapp.ui.auth.LoginScreen
+import dev.esandamzapp.slatrackerapp.ui.profile.ProfileScreen
 import dev.esandamzapp.slatrackerapp.ui.theme.SLATrackerAPPTheme
 
 class MainActivity : ComponentActivity() {
@@ -18,30 +20,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SLATrackerAPPTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
-            }
+            ProfileScreen()
+
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    SLATrackerAPPTheme {
-        Greeting("Android")
     }
 }
