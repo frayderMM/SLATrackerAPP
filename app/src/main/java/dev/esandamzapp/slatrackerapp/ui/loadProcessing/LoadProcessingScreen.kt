@@ -1,9 +1,5 @@
 package dev.esandamzapp.slatrackerapp.ui.loadProcessing
 
-// ----------------------------
-// IMPORTS NECESARIOS
-
-// ----------------------------
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
