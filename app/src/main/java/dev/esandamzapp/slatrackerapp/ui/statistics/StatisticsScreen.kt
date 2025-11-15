@@ -1,4 +1,4 @@
-package dev.esandamzapp.slatrackerapp.ui.statistics
+package com.example.app.ui.statistics
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
