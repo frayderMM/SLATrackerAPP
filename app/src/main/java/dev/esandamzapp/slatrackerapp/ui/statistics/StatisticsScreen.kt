@@ -1,421 +1,524 @@
 package com.example.app.ui.statistics
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.FilterAlt
-import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import dev.esandamzapp.slatrackerapp.ui.theme.SLATrackerAPPTheme
 
-// ───────────────────────────────────────────────
-// MAIN SCREEN
-// ───────────────────────────────────────────────
+// Colores inspirados en tu Figma (azul + naranja + lilas)
+private val HeaderBlue = Color(0xFF071C4D)
+private val AccentOrange = Color(0xFFFF7A00)
+private val LightLilac = Color(0xFFF6F2FF)
+private val CardBorderLilac = Color(0xFFE3DFF5)
+private val KpiBackground = Color(0xFFF6F2FF)
+private val ChipUnselected = Color(0xFFE0E0E0)
+private val TextSoft = Color(0xFF666666)
+
 @Composable
 fun StatisticsScreen() {
+    var selectedSLA by remember { mutableStateOf("Todos") }
+    var selectedRole by remember { mutableStateOf("Todos") }
+    var showReportPreview by remember { mutableStateOf(false) }
 
-    val scroll = rememberScrollState()
+    // Mock de datos
+    val mockCumplimiento = 63
+    val mockPromedioDias = 33
+    val mockTotal = 8
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(scroll)
-            .background(Color(0xFFF7F7F7))
+            .background(Color(0xFFF8F8FF))
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+            // ---------- HEADER AZUL (ESTADÍSTICAS) ----------
+            StatisticsHeader()
 
-        HeaderSection()
+            // ---------- CONTENIDO SCROLLEABLE ----------
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
 
-        Spacer(Modifier.height(12.dp))
+                // Filtros
+                item {
+                    FiltersCard(
+                        selectedSLA = selectedSLA,
+                        onSLAChange = { selectedSLA = it },
+                        selectedRole = selectedRole,
+                        onRoleChange = { selectedRole = it }
+                    )
+                }
 
-        FilterCard()
+                // KPIs
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        KpiCard(
+                            title = "Tasa de Cumplimiento",
+                            value = "$mockCumplimiento%",
+                            modifier = Modifier.weight(1f)
+                        )
+                        KpiCard(
+                            title = "Promedio de Días",
+                            value = "$mockPromedioDias",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
 
-        Spacer(Modifier.height(8.dp))
+                // Gráficos mock
+                item {
+                    ChartCard(
+                        title = "Distribución General",
+                        subtitle = "Cumple vs No Cumple"
+                    )
+                }
 
-        SummaryIndicators()
+                item {
+                    ChartCard(
+                        title = "Cumplimiento por Tipo de SLA",
+                        subtitle = "SLA1 vs SLA2"
+                    )
+                }
 
-        Spacer(Modifier.height(12.dp))
+                // Resumen ejecutivo
+                item {
+                    ExecutiveSummaryCard(
+                        total = mockTotal,
+                        cumplimiento = mockCumplimiento,
+                        promedio = mockPromedioDias
+                    )
+                }
 
-        PieChartSection()
+                // Tarjeta de Generar reporte
+                item {
+                    GenerateReportCard(
+                        registros = mockTotal,
+                        cumplimiento = mockCumplimiento,
+                        onClick = { showReportPreview = true }
+                    )
+                }
+            }
+        }
 
-        Spacer(Modifier.height(12.dp))
-
-        BarChartSection()
-
-        Spacer(Modifier.height(16.dp))
-
-        ExecutiveSummaryCard()
-
-        Spacer(Modifier.height(12.dp))
-
-        GenerateReportCard()
-
-        Spacer(Modifier.height(20.dp))
+        // ---------- OVERLAY PARA PREVISUALIZACIÓN DE REPORTE ----------
+        if (showReportPreview) {
+            Surface(
+                color = Color.Black.copy(alpha = 0.35f),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.35f))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    ReportPreviewScreen(
+                        onClose = { showReportPreview = false },
+                        onExportPDF = { /* TODO: lógica futura */ },
+                        onSendEmail = { /* TODO: lógica futura */ }
+                    )
+                }
+            }
+        }
     }
 }
 
-// ───────────────────────────────────────────────
+// ----------------------------------------------------
 // HEADER
-// ───────────────────────────────────────────────
+// ----------------------------------------------------
 
 @Composable
-fun HeaderSection() {
+private fun StatisticsHeader() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF0D1E44))
-            .padding(20.dp)
+            .height(120.dp)
+            .background(HeaderBlue)
+            .padding(horizontal = 16.dp, vertical = 18.dp)
     ) {
-        Column {
+        Column(
+            modifier = Modifier.align(Alignment.CenterStart)
+        ) {
             Text(
-                "Estadísticas",
+                text = "Estadísticas",
                 color = Color.White,
-                style = MaterialTheme.typography.headlineSmall
+                fontSize = 20.sp,
+                fontWeight = FontWeight.SemiBold
             )
+            Spacer(Modifier.height(4.dp))
             Text(
-                "Análisis de cumplimiento SLA",
-                color = Color(0xFFDCE6FF),
-                style = MaterialTheme.typography.bodyMedium
+                text = "Análisis de cumplimiento SLA",
+                color = Color.White.copy(alpha = 0.85f),
+                fontSize = 14.sp
             )
+        }
+
+        // Icono de notificaciones + badge (mock)
+        Box(
+            modifier = Modifier.align(Alignment.TopEnd)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("🔔", fontSize = 18.sp)
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFFF4B4B))
+                    .align(Alignment.TopEnd),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "4",
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
 
-// ───────────────────────────────────────────────
+// ----------------------------------------------------
 // FILTROS
-// ───────────────────────────────────────────────
+// ----------------------------------------------------
 
 @Composable
-fun FilterCard() {
-
-    var selectedSLA by remember { mutableStateOf("Todos") }
-    var selectedRole by remember { mutableStateOf("Todos los roles") }
-
+private fun FiltersCard(
+    selectedSLA: String,
+    onSLAChange: (String) -> Unit,
+    selectedRole: String,
+    onRoleChange: (String) -> Unit
+) {
     Card(
-        modifier = Modifier.padding(16.dp),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = LightLilac
+        ),
+        border = CardDefaults.outlinedCardBorder().copy(width = 0.dp)
     ) {
-        Column(Modifier.padding(20.dp)) {
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.FilterAlt, "Filter", tint = Color(0xFFFF7A00))
-                Spacer(Modifier.width(6.dp))
-                Text("Filtros", style = MaterialTheme.typography.titleMedium)
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                DateInput("Desde")
-                DateInput("Hasta")
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            Text("Tipo SLA", style = MaterialTheme.typography.labelMedium)
-
-            Spacer(Modifier.height(6.dp))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChipM3(
-                    label = "Todos",
-                    selected = selectedSLA == "Todos",
-                    onSelect = { selectedSLA = "Todos" }
-                )
-                FilterChipM3(
-                    label = "SLA1",
-                    selected = selectedSLA == "SLA1",
-                    onSelect = { selectedSLA = "SLA1" }
-                )
-                FilterChipM3(
-                    label = "SLA2",
-                    selected = selectedSLA == "SLA2",
-                    onSelect = { selectedSLA = "SLA2" }
-                )
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            Text("Rol/Área", style = MaterialTheme.typography.labelMedium)
-
-            OutlinedTextField(
-                value = selectedRole,
-                onValueChange = {},
-                readOnly = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            Spacer(Modifier.height(20.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Button(
-                    onClick = {},
-                    colors = ButtonDefaults.buttonColors(Color(0xFFFF7A00)),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Aplicar filtros")
-                }
-
-                OutlinedButton(
-                    onClick = {},
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Limpiar")
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-            Text("Mostrando 8 de 8 registros", style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}
-
-@Composable
-fun DateInput(label: String) {
-    OutlinedTextField(
-        value = "",
-        onValueChange = {},
-        readOnly = true,
-        modifier = Modifier.width(150.dp),
-        shape = RoundedCornerShape(12.dp),
-        label = { Text(label) },
-        trailingIcon = { Icon(Icons.Default.CalendarMonth, null) }
-    )
-}
-
-@Composable
-fun FilterChipM3(label: String, selected: Boolean, onSelect: () -> Unit) {
-    AssistChip(
-        onClick = onSelect,
-        label = { Text(label) },
-        colors = AssistChipDefaults.assistChipColors(
-            containerColor = if (selected) Color(0xFFFF7A00) else Color.White,
-            labelColor = if (selected) Color.White else Color.Black
-        )
-    )
-}
-
-// ───────────────────────────────────────────────
-// INDICADORES
-// ───────────────────────────────────────────────
-
-@Composable
-fun SummaryIndicators() {
-    Row(
-        modifier = Modifier
-            .padding(horizontal = 16.dp)
-            .fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-
-        IndicatorCard("Tasa de Cumplimiento", "63%")
-        IndicatorCard("Promedio de Días", "33")
-    }
-}
-
-@Composable
-fun IndicatorCard(title: String, value: String) {
-    Card(
-        modifier = Modifier
-            .width(170.dp)
-            .padding(4.dp),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(10.dp))
-            Text(value, style = MaterialTheme.typography.headlineMedium)
-        }
-    }
-}
-
-// ───────────────────────────────────────────────
-// PIE CHART
-// ───────────────────────────────────────────────
-
-@Composable
-fun PieChartSection() {
-
-    Card(
-        modifier = Modifier.padding(16.dp),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(Modifier.padding(20.dp)) {
-
-            PieChart(
-                percent = 0.63f,
-                colorA = Color(0xFF2ECC71),
-                colorB = Color(0xFFE74C3C)
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("5", fontWeight = FontWeight.Bold)
-                    Text("Cumple SLA")
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("3", fontWeight = FontWeight.Bold)
-                    Text("No Cumple SLA")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun PieChart(percent: Float, colorA: Color, colorB: Color) {
-    Canvas(modifier = Modifier.size(180.dp)) {
-        val sweep = percent * 360f
-        drawArc(colorA, startAngle = 0f, sweepAngle = sweep, useCenter = true)
-        drawArc(
-            color = colorB,
-            startAngle = sweep,
-            sweepAngle = 360f - sweep,
-            useCenter = true
-        )
-    }
-}
-
-// ───────────────────────────────────────────────
-// BAR CHART
-// ───────────────────────────────────────────────
-
-@Composable
-fun BarChartSection() {
-    Card(
-        modifier = Modifier.padding(16.dp),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(Modifier.padding(20.dp)) {
-
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
             Text(
-                "Cumplimiento por Tipo de SLA",
-                style = MaterialTheme.typography.titleMedium
+                text = "Filtros",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
             )
 
-            Spacer(Modifier.height(20.dp))
-
-            Canvas(modifier = Modifier.height(180.dp).fillMaxWidth()) {
-
-                val barWidth = 70f
-
-                // SLA1
-                drawRect(Color(0xFF2ECC71), topLeft = Offset(100f, 20f), size = Size(barWidth, 200f))
-                drawRect(Color(0xFFE74C3C), topLeft = Offset(180f, 140f), size = Size(barWidth, 80f))
-
-                // SLA2
-                drawRect(Color(0xFF2ECC71), topLeft = Offset(300f, 140f), size = Size(barWidth, 80f))
-                drawRect(Color(0xFFE74C3C), topLeft = Offset(380f, 80f), size = Size(barWidth, 140f))
-            }
-        }
-    }
-}
-
-// ───────────────────────────────────────────────
-// RESUMEN EJECUTIVO
-// ───────────────────────────────────────────────
-
-@Composable
-fun ExecutiveSummaryCard() {
-    Card(
-        modifier = Modifier.padding(16.dp),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, Color(0xFFFF7A00))
-    ) {
-        Column(Modifier.padding(20.dp)) {
-
-            Text("Resumen Ejecutivo", style = MaterialTheme.typography.titleMedium)
-
-            Spacer(Modifier.height(12.dp))
-
+            // Tipo SLA
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Bullet("Total de solicitudes procesadas: 8")
-                Bullet("Tasa global de cumplimiento: 63%")
-                Bullet("Tiempo promedio de contratación: 33 días")
-                Bullet("Se requiere mejorar los tiempos de contratación")
+                Text("Tipo SLA", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        text = "Todos",
+                        selected = selectedSLA == "Todos",
+                        onClick = { onSLAChange("Todos") }
+                    )
+                    FilterChip(
+                        text = "SLA1",
+                        selected = selectedSLA == "SLA1",
+                        onClick = { onSLAChange("SLA1") }
+                    )
+                    FilterChip(
+                        text = "SLA2",
+                        selected = selectedSLA == "SLA2",
+                        onClick = { onSLAChange("SLA2") }
+                    )
+                }
+            }
+
+            // Rol / Área
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Rol / Área", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                FilterChip(
+                    text = selectedRole,
+                    selected = true,
+                    onClick = { /* luego abrirá un dropdown */ }
+                )
             }
         }
     }
 }
 
 @Composable
-fun Bullet(text: String) {
-    Row {
-        Text("• ", fontWeight = FontWeight.Bold)
-        Text(text)
+private fun FilterChip(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val bg = if (selected) AccentOrange else ChipUnselected
+    val txtColor = if (selected) Color.White else Color(0xFF333333)
+
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(999.dp),
+        color = bg
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
+            color = txtColor,
+            fontSize = 14.sp
+        )
     }
 }
 
-// ───────────────────────────────────────────────
-// GENERAR REPORTE
-// ───────────────────────────────────────────────
+// ----------------------------------------------------
+// KPIs
+// ----------------------------------------------------
 
 @Composable
-fun GenerateReportCard() {
-
+private fun KpiCard(
+    title: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
     Card(
-        modifier = Modifier.padding(16.dp),
-        shape = RoundedCornerShape(16.dp)
+        modifier = modifier,
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = KpiBackground
+        )
     ) {
-        Column(Modifier.padding(20.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = title,
+                fontSize = 14.sp,
+                color = TextSoft
+            )
+            Text(
+                text = value,
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.InsertDriveFile, null, tint = Color(0xFFFF7A00))
-                Spacer(Modifier.width(8.dp))
-                Text("Generar Reporte SLA", style = MaterialTheme.typography.titleMedium)
-            }
+// ----------------------------------------------------
+// CHART CARDS (mock)
+// ----------------------------------------------------
 
-            Text("Exportar o compartir análisis de cumplimiento")
-
+@Composable
+private fun ChartCard(
+    title: String,
+    subtitle: String
+) {
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = LightLilac
+        ),
+        border = CardDefaults.outlinedCardBorder().copy(width = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .heightIn(min = 160.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(title, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                subtitle,
+                fontSize = 13.sp,
+                color = TextSoft
+            )
             Spacer(Modifier.height(16.dp))
+            // Área del gráfico mock
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color.White),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Gráfico mock aquí",
+                    color = TextSoft.copy(alpha = 0.6f),
+                    fontSize = 13.sp
+                )
+            }
+        }
+    }
+}
+
+// ----------------------------------------------------
+// RESUMEN EJECUTIVO
+// ----------------------------------------------------
+
+@Composable
+private fun ExecutiveSummaryCard(
+    total: Int,
+    cumplimiento: Int,
+    promedio: Int
+) {
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFFFF7ED)
+        ),
+        border = CardDefaults.outlinedCardBorder().copy(width = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "Resumen Ejecutivo",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
+            Text(
+                text = "• Total de solicitudes procesadas: $total",
+                fontSize = 14.sp
+            )
+            Text(
+                text = "• Tasa global de cumplimiento: $cumplimiento%",
+                fontSize = 14.sp
+            )
+            Text(
+                text = "• Tiempo promedio de contratación: $promedio días",
+                fontSize = 14.sp
+            )
+            Text(
+                text = "• Se requiere mejorar los tiempos de contratación",
+                fontSize = 14.sp
+            )
+        }
+    }
+}
+
+// ----------------------------------------------------
+// TARJETA GENERAR REPORTE
+// ----------------------------------------------------
+
+@Composable
+private fun GenerateReportCard(
+    registros: Int,
+    cumplimiento: Int,
+    onClick: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        border = BorderStroke(1.dp, CardBorderLilac)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Generar Reporte SLA",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
+            Text(
+                text = "Exportar o compartir análisis de cumplimiento",
+                fontSize = 13.sp,
+                color = TextSoft
+            )
 
             Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column {
-                    Text("Registros filtrados", fontWeight = FontWeight.Bold)
-                    Text("8")
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Registros filtrados",
+                        fontSize = 13.sp,
+                        color = TextSoft
+                    )
+                    Text(
+                        registros.toString(),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
-                Column {
-                    Text("Tasa cumplimiento", fontWeight = FontWeight.Bold)
-                    Text("63%", color = Color(0xFFE74C3C))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Tasa cumplimiento",
+                        fontSize = 13.sp,
+                        color = TextSoft
+                    )
+                    Text(
+                        "$cumplimiento%",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
-
-            Spacer(Modifier.height(16.dp))
 
             Button(
-                onClick = {},
-                colors = ButtonDefaults.buttonColors(Color(0xFFFF7A00)),
-                modifier = Modifier.fillMaxWidth()
+                onClick = onClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AccentOrange
+                ),
+                shape = RoundedCornerShape(24.dp)
             ) {
-                Text("Generar reporte")
+                Text(
+                    text = "Generar reporte",
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
+    }
+}
+
+// ----------------------------------------------------
+// PREVIEW
+// ----------------------------------------------------
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun StatisticsScreenPreview() {
+    SLATrackerAPPTheme {
+        StatisticsScreen()
     }
 }
