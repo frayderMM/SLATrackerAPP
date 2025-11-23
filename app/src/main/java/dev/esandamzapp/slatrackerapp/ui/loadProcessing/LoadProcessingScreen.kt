@@ -20,17 +20,18 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Image
+import androidx.navigation.NavController
 
 // ----------------------------
 // UI PRINCIPAL
 // ----------------------------
 @Composable
-fun ImportarDatosExcelScreen(
-    onDescargarPlantilla: () -> Unit = {},
-    onSeleccionarArchivo: () -> Unit = {},
-    onCancelar: () -> Unit = {},
-    onImportar: () -> Unit = {},
-    registrosCount: Int = 0
+fun ImportarDatosExcelScreen(navController: NavController,
+                             onDescargarPlantilla: () -> Unit = {},
+                             onSeleccionarArchivo: () -> Unit = {},
+                             onCancelar: () -> Unit = {},
+                             onImportar: () -> Unit = {},
+                             registrosCount: Int = 0
 ) {
     Box(
         modifier = Modifier
@@ -154,7 +155,9 @@ fun ImportarDatosExcelScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
 
-                    OutlinedButton(onClick = onCancelar) {
+                    OutlinedButton(onClick =  {
+                        navController.popBackStack()
+                    }) {
                         Text("Cancelar")
                     }
 
@@ -170,13 +173,3 @@ fun ImportarDatosExcelScreen(
     }
 }
 
-// ----------------------------
-// PREVIEW
-// ----------------------------
-@Preview(showBackground = true)
-@Composable
-fun PreviewImportarDatosExcel() {
-    MaterialTheme {
-        ImportarDatosExcelScreen(registrosCount = 0)
-    }
-}

@@ -18,20 +18,17 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
+import androidx.navigation.NavController
 import java.time.LocalDate
 
-// =======================================================
-// ⭐ HOME SCREEN COMPLETO
-// =======================================================
+
+
 @Composable
-fun HomeScreen() {
+fun HomeScreen(navController: NavController) {
 
     val scroll = rememberScrollState()
-
-    // 🔥 Ahora dinámico, escalable y móvil-friendly
     var selectedFilter by remember { mutableStateOf("Todos") }
 
-    // Puedes tener 100 SLA y va perfecto
     val filterOptions = listOf(
         "Todos", "SLA1", "SLA2", "SLA3", "SLA4", "SLA5",
         "Cumple", "No Cumple", "Pendiente", "Escalado"
@@ -51,25 +48,20 @@ fun HomeScreen() {
             onFilterChange = { selectedFilter = it }
         )
 
-        ImportExcelButton()
+        ImportExcelButton(
+            onClick = { navController.navigate("loadProcessing") }
+        )
 
         Spacer(Modifier.height(12.dp))
 
         StatusRow()
-
         PredictionCard()
-
         RecommendationCard()
-
         RequestsListSection()
-
         Spacer(Modifier.height(80.dp))
     }
 }
 
-// =======================================================
-// ⭐ HEADER
-// =======================================================
 @Composable
 fun HeaderSection() {
     Box(
@@ -111,9 +103,6 @@ fun HeaderSection() {
     }
 }
 
-// =======================================================
-// ⭐ FILTRO OPTIMIZADO PARA MÓVIL (LazyRow)
-// =======================================================
 @Composable
 fun FilterSection(
     selectedFilter: String,
@@ -140,7 +129,6 @@ fun FilterSection(
 
                 Spacer(Modifier.height(14.dp))
 
-                // 🔥 NUEVO: LazyRow móvil-friendly
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -157,9 +145,6 @@ fun FilterSection(
     }
 }
 
-// =======================================================
-// ⭐ CHIP MEJORADO + RIPPLE + ELEVACIÓN
-// =======================================================
 @Composable
 fun FilterChipItem(
     text: String,
@@ -191,11 +176,8 @@ fun FilterChipItem(
     }
 }
 
-// =======================================================
-// ⭐ IMPORTAR EXCEL
-// =======================================================
 @Composable
-fun ImportExcelButton() {
+fun ImportExcelButton(onClick: () -> Unit) {
     Box(
         Modifier
             .padding(horizontal = 20.dp)
@@ -208,16 +190,14 @@ fun ImportExcelButton() {
                 ),
                 RoundedCornerShape(10.dp)
             )
+            .clickable { onClick() }
             .padding(14.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text("📥   Importar desde Excel", color = Color(0xFFB06C00), fontWeight = FontWeight.SemiBold)
+        Text("  Importar desde Excel", color = Color(0xFFB06C00), fontWeight = FontWeight.SemiBold)
     }
 }
 
-// =======================================================
-// ⭐ STATUS
-// =======================================================
 @Composable
 fun StatusRow() {
     Row(
@@ -277,9 +257,6 @@ fun StatusBox(
     }
 }
 
-// =======================================================
-// ⭐ PREDICCIÓN
-// =======================================================
 @Composable
 fun PredictionCard() {
     Card(
@@ -310,7 +287,7 @@ fun PredictionCard() {
 
             Card(
                 shape = RoundedCornerShape(14.dp),
-                border = BorderStroke(1.dp, Color(0xFFE0E7FF)),
+                        border = BorderStroke(1.dp, Color(0xFFE0E7FF)),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -384,9 +361,6 @@ fun SmallStatCard(title: String, emoji: String, value: String) {
     }
 }
 
-// =======================================================
-// ⭐ RECOMENDACIÓN
-// =======================================================
 @Composable
 fun RecommendationCard() {
     Card(
@@ -414,9 +388,6 @@ fun RecommendationCard() {
     Spacer(Modifier.height(20.dp))
 }
 
-// =======================================================
-// ⭐ LISTA DE SOLICITUDES
-// =======================================================
 @Composable
 fun RequestsListSection() {
     Column(Modifier.padding(horizontal = 20.dp)) {
@@ -531,3 +502,4 @@ fun StatusBadge(ok: Boolean) {
         Text(text, color = Color.White, fontSize = 12.sp)
     }
 }
+
