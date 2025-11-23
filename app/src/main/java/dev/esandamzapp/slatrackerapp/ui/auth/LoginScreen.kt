@@ -19,17 +19,16 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.compose.rememberNavController
 import dev.esandamzapp.slatrackerapp.R
 
-
-
 @Composable
-fun LoginScreen( ) {
+fun LoginScreen(
+    onLoginSuccess: () -> Unit   // SE USA PARA NAVEGAR
+) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    val navController = rememberNavController()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -39,7 +38,6 @@ fun LoginScreen( ) {
     ) {
         Spacer(modifier = Modifier.height(70.dp))
 
-        // Logo
         Image(
             painter = painterResource(id = R.drawable.logotata),
             contentDescription = "TCS Logo",
@@ -51,7 +49,6 @@ fun LoginScreen( ) {
 
         Spacer(modifier = Modifier.height(70.dp))
 
-        // Login Form
         Column(
             modifier = Modifier
                 .width(350.dp)
@@ -59,16 +56,11 @@ fun LoginScreen( ) {
                 .padding(20.dp)
         ) {
 
-
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it },
                 label = {
-                    Text(
-                        text = "user",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
-                    )
+                    Text("user", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 },
                 textStyle = TextStyle(fontSize = 20.sp),
                 modifier = Modifier
@@ -77,46 +69,6 @@ fun LoginScreen( ) {
                     .padding(vertical = 8.dp),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFF007DC4),
-                unfocusedBorderColor = Color(0x668BC9E6),
-                cursorColor = Color(0xFF007DC4),),
-                shape = RoundedCornerShape(10.dp)
-            )
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = {
-                    Text(
-                        text = "Password",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                },
-                textStyle = TextStyle(fontSize = 18.sp),
-                visualTransformation = if (passwordVisible)
-                    VisualTransformation.None
-                else
-                    PasswordVisualTransformation(),
-                trailingIcon = {
-                    val icon = if (passwordVisible)
-                        Icons.Filled.Visibility
-                    else
-                        Icons.Filled.VisibilityOff
-
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null
-                        )
-                    }
-                },
-                modifier = Modifier
-                    .width(320.dp)
-                    .heightIn(min = 56.dp)
-                    .padding(vertical = 8.dp),
-                singleLine = true,
-
-                colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Color(0xFF007DC4),
                     unfocusedBorderColor = Color(0x668BC9E6),
                     cursorColor = Color(0xFF007DC4)
@@ -124,15 +76,43 @@ fun LoginScreen( ) {
                 shape = RoundedCornerShape(10.dp)
             )
 
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = {
+                    Text("Password", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                },
+                textStyle = TextStyle(fontSize = 18.sp),
+                visualTransformation =
+                    if (passwordVisible) VisualTransformation.None
+                    else PasswordVisualTransformation(),
+                trailingIcon = {
+                    val icon =
+                        if (passwordVisible) Icons.Filled.Visibility
+                        else Icons.Filled.VisibilityOff
+
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(icon, contentDescription = null)
+                    }
+                },
+                modifier = Modifier
+                    .width(320.dp)
+                    .heightIn(min = 56.dp)
+                    .padding(vertical = 8.dp),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color(0xFF007DC4),
+                    unfocusedBorderColor = Color(0x668BC9E6),
+                    cursorColor = Color(0xFF007DC4)
+                ),
+                shape = RoundedCornerShape(10.dp)
+            )
         }
 
         Spacer(modifier = Modifier.height(30.dp))
 
-        // Login Button
         Button(
-            onClick = { //navegar home
-                navController.navigate("home") {}
-                 },
+            onClick = { onLoginSuccess() },  // 👈 NAVEGA AL HOME
             modifier = Modifier
                 .width(350.dp)
                 .padding(vertical = 24.dp),
@@ -151,7 +131,6 @@ fun LoginScreen( ) {
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // Footer
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(bottom = 8.dp)
