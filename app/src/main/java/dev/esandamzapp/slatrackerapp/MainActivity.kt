@@ -14,6 +14,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.esandamzapp.slatrackerapp.ui.auth.LoginScreen
 import dev.esandamzapp.slatrackerapp.ui.loadProcessing.ImportarDatosExcelScreen
 import dev.esandamzapp.slatrackerapp.ui.profile.ProfileScreen
+import dev.esandamzapp.slatrackerapp.ui.sla.NewRequestScreen
 import dev.esandamzapp.slatrackerapp.ui.theme.SLATrackerAPPTheme
 
 class MainActivity : ComponentActivity() {
@@ -21,8 +22,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            ImportarDatosExcelScreen()
-
+            //ImportarDatosExcelScreen()
+            NewRequestScreen()
         }
     }
 }
