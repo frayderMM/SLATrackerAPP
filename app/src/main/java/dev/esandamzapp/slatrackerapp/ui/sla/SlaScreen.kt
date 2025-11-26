@@ -1,10 +1,8 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
-
 package dev.esandamzapp.slatrackerapp.ui.sla
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
@@ -14,18 +12,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.esandamzapp.slatrackerapp.data.remote.SlaRequest
+import dev.esandamzapp.slatrackerapp.viewmodel.SlaUiState
+import dev.esandamzapp.slatrackerapp.viewmodel.SlaViewModel
+import java.text.SimpleDateFormat
+import java.util.*
+import java.util.TimeZone
 
-// ------------------------------------------------------
-// (Opcional) Formateador que puede usarse para obtener la
-// fecha con barras desde una cadena de dígitos.
-// ------------------------------------------------------
 fun formatDateFromDigits(digits: String): String {
     val d = digits.filter { it.isDigit() }.take(8)
     val sb = StringBuilder()
@@ -36,16 +37,22 @@ fun formatDateFromDigits(digits: String): String {
     return sb.toString()
 }
 
-// ------------------------------------------------------
-// VisualTransformation para mostrar dd/mm/aaaa sin
-// modificar el texto subyacente (que serán sólo dígitos).
-// Esto mantiene el cursor estable.
-// ------------------------------------------------------
+fun convertDateToIso(digits: String): String? {
+    if (digits.length != 8) return null
+    val parser = SimpleDateFormat("ddMMyyyy", Locale.US)
+    val formatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+    }
+    return try {
+        parser.parse(digits)?.let { formatter.format(it) }
+    } catch (e: Exception) {
+        null
+    }
+}
+
 class DateVisualTransformation : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
         val digits = text.text.filter { it.isDigit() }.take(8)
-
-        // Construir la cadena transformada con '/'
         val transformed = buildString {
             for (i in digits.indices) {
                 append(digits[i])
@@ -53,17 +60,14 @@ class DateVisualTransformation : VisualTransformation {
             }
         }
 
-        // OffsetMapping: mapea posiciones original <-> transformada
         val offsetMapping = object : OffsetMapping {
             override fun originalToTransformed(offset: Int): Int {
-                // offset: posición en original (solo dígitos)
                 if (offset <= 1) return offset
                 if (offset <= 3) return offset + 1
                 return offset + 2
             }
 
             override fun transformedToOriginal(offset: Int): Int {
-                // offset: posición en transformada (incluye '/')
                 if (offset <= 2) return offset
                 if (offset <= 5) return (offset - 1)
                 return offset - 2
@@ -74,49 +78,42 @@ class DateVisualTransformation : VisualTransformation {
     }
 }
 
-// ------------------------------------------------------
-// CAMPO DE FECHA (usa texto subyacente SIN slashes, pero muestra con slashes)
-// value debe ser la cadena de dígitos (ej. "15022025").
-// ------------------------------------------------------
 @Composable
 fun DateField(
     label: String,
     valueDigits: String,
-    onDigitsChange: (String) -> Unit
+    onDigitsChange: (String) -> Unit,
+    isError: Boolean
 ) {
-    Column {
-        Text(label, style = MaterialTheme.typography.labelMedium)
-        OutlinedTextField(
-            value = valueDigits,
-            onValueChange = { newValue ->
-                // Aceptar sólo dígitos y limitar a 8 (ddMMyyyy)
-                val digits = newValue.filter { it.isDigit() }.take(8)
-                onDigitsChange(digits)
-            },
-            placeholder = { Text("dd/mm/aaaa") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            trailingIcon = {
-                Icon(
-                    imageVector = Icons.Default.DateRange,
-                    contentDescription = "Calendario",
-                    tint = Color(0xFFB8B8B8)
-                )
-            },
-            visualTransformation = DateVisualTransformation(),
-            singleLine = true
-        )
-    }
+    OutlinedTextField(
+        value = valueDigits,
+        onValueChange = { newValue ->
+            val digits = newValue.filter { it.isDigit() }.take(8)
+            onDigitsChange(digits)
+        },
+        label = { Text(label) },
+        placeholder = { Text("dd/mm/aaaa") },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        trailingIcon = {
+            Icon(
+                imageVector = Icons.Default.DateRange,
+                contentDescription = "Calendario",
+                tint = Color(0xFFB8B8B8)
+            )
+        },
+        visualTransformation = DateVisualTransformation(),
+        singleLine = true,
+        isError = isError
+    )
 }
 
-// ------------------------------------------------------
-// PANTALLA PRINCIPAL
-// ------------------------------------------------------
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewRequestScreen(
     onClose: () -> Unit = {},
-    onSubmit: () -> Unit = {}
+    viewModel: SlaViewModel = viewModel()
 ) {
     var role by remember { mutableStateOf("") }
     var slaType by remember { mutableStateOf("") }
@@ -133,9 +130,21 @@ fun NewRequestScreen(
 
     var showNewSlaDialog by remember { mutableStateOf(false) }
 
-    // Ahora estos estados contienen SÓLO dígitos (ej. "15022025")
     var requestDateDigits by remember { mutableStateOf("") }
     var entryDateDigits by remember { mutableStateOf("") }
+
+    val uiState by viewModel.uiState.collectAsState()
+
+    var validationErrors by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+
+
+    HandleUiState(uiState = uiState, onDismiss = {
+        viewModel.resetState()
+        if (uiState is SlaUiState.Success) {
+            onClose()
+        }
+    })
+
 
     Surface(
         shape = RoundedCornerShape(20.dp),
@@ -146,12 +155,9 @@ fun NewRequestScreen(
     ) {
         Column(
             modifier = Modifier.padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            // ------------------------------------------------------
-            // HEADER
-            // ------------------------------------------------------
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -169,14 +175,11 @@ fun NewRequestScreen(
                 }
             }
 
-            // ------------------------------------------------------
-            // NOMBRE DEL ROL
-            // ------------------------------------------------------
             Column {
-                Text("Nombre del Rol", style = MaterialTheme.typography.labelMedium)
                 OutlinedTextField(
                     value = role,
                     onValueChange = { role = it },
+                    label = { Text("Nombre del Rol") },
                     placeholder = { Text("Ej: Desarrollador Backend Senior") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -186,16 +189,15 @@ fun NewRequestScreen(
                             contentDescription = "Rol",
                             tint = Color(0xFFB8B8B8)
                         )
-                    }
+                    },
+                    isError = validationErrors.containsKey("role")
                 )
+                validationErrors["role"]?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
             }
 
-            // ------------------------------------------------------
-            // DROPDOWN DE SLA
-            // ------------------------------------------------------
             Column {
-                Text("Tipo de SLA", style = MaterialTheme.typography.labelMedium)
-
                 ExposedDropdownMenuBox(
                     expanded = expanded,
                     onExpandedChange = { expanded = !expanded }
@@ -204,12 +206,14 @@ fun NewRequestScreen(
                         value = slaType,
                         onValueChange = {},
                         readOnly = true,
+                        label = { Text("Tipo de SLA") },
                         placeholder = { Text("Seleccionar SLA") },
                         modifier = Modifier
                             .menuAnchor()
                             .fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) }
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                        isError = validationErrors.containsKey("sla")
                     )
 
                     ExposedDropdownMenu(
@@ -235,38 +239,72 @@ fun NewRequestScreen(
                         )
                     }
                 }
+                validationErrors["sla"]?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
             }
 
-            // ------------------------------------------------------
-            // FECHA DE SOLICITUD
-            // ------------------------------------------------------
-            DateField(
-                label = "Fecha de Solicitud",
-                valueDigits = requestDateDigits,
-                onDigitsChange = { requestDateDigits = it }
-            )
+            Column {
+                DateField(
+                    label = "Fecha de Solicitud",
+                    valueDigits = requestDateDigits,
+                    onDigitsChange = { requestDateDigits = it },
+                    isError = validationErrors.containsKey("requestDate")
+                )
+                validationErrors["requestDate"]?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+            }
 
-            // ------------------------------------------------------
-            // FECHA DE INGRESO
-            // ------------------------------------------------------
-            DateField(
-                label = "Fecha de Ingreso",
-                valueDigits = entryDateDigits,
-                onDigitsChange = { entryDateDigits = it }
-            )
+            Column {
+                DateField(
+                    label = "Fecha de Ingreso",
+                    valueDigits = entryDateDigits,
+                    onDigitsChange = { entryDateDigits = it },
+                    isError = validationErrors.containsKey("entryDate")
+                )
+                validationErrors["entryDate"]?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+            }
 
-            // ------------------------------------------------------
-            // BOTÓN REGISTRAR
-            // ------------------------------------------------------
+            Spacer(modifier = Modifier.weight(1f))
+
             Button(
                 onClick = {
-                    // Aquí puedes convertir a formato dd/mm/yyyy si lo necesitas:
-                    val formattedRequest = formatDateFromDigits(requestDateDigits)
-                    val formattedEntry = formatDateFromDigits(entryDateDigits)
+                    val errors = mutableMapOf<String, String>()
+                    if (role.isBlank()) errors["role"] = "El nombre del rol es obligatorio."
+                    if (slaType.isBlank()) errors["sla"] = "Debe seleccionar un tipo de SLA."
 
-                    // Haz lo que necesites con las fechas formateadas:
-                    // por ejemplo, enviarlas al viewModel o validarlas.
-                    onSubmit()
+                    val isoRequestDate = convertDateToIso(requestDateDigits)
+                    if (requestDateDigits.length < 8) errors["requestDate"] = "La fecha de solicitud está incompleta."
+                    else if (isoRequestDate == null) errors["requestDate"] = "La fecha de solicitud no es válida."
+
+                    val isoEntryDate = convertDateToIso(entryDateDigits)
+                     if (entryDateDigits.length < 8) errors["entryDate"] = "La fecha de ingreso está incompleta."
+                    else if (isoEntryDate == null) errors["entryDate"] = "La fecha de ingreso no es válida."
+
+                    validationErrors = errors
+
+                    if (errors.isEmpty()) {
+                        val slaId = slaType.substringAfter("SLA").substringBefore(" ").toIntOrNull() ?: 0
+                        val numDiasSla = slaType.substringAfter("(").substringBefore(" ").toIntOrNull() ?: 0
+
+                        val request = SlaRequest(
+                            idPersonal = 2,
+                            idRolRegistro = 3,
+                            idSla = 3,
+                            idArea = 3,
+                            idEstadoSolicitud = 1,
+                            fechaSolicitud = isoRequestDate!!,
+                            fechaIngreso = isoEntryDate!!,
+                            numDiasSla = numDiasSla,
+                            resumenSla = role,
+                            origenDato = "android",
+                            creadoPor = 3 // <-- CORREGIDO: ahora coincide con el ID del token.
+                        )
+                        viewModel.createSla(request)
+                    }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF7A00)),
                 modifier = Modifier
@@ -277,9 +315,6 @@ fun NewRequestScreen(
                 Text("Registrar Solicitud", color = Color.White)
             }
 
-            // ------------------------------------------------------
-            // BOTÓN CANCELAR
-            // ------------------------------------------------------
             OutlinedButton(
                 onClick = onClose,
                 modifier = Modifier
@@ -292,9 +327,6 @@ fun NewRequestScreen(
         }
     }
 
-    // ------------------------------------------------------
-    // DIÁLOGO PARA NUEVO SLA
-    // ------------------------------------------------------
     if (showNewSlaDialog) {
 
         var name by remember { mutableStateOf("") }
@@ -377,5 +409,41 @@ fun NewRequestScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+fun HandleUiState(uiState: SlaUiState, onDismiss: () -> Unit) {
+    when (uiState) {
+        is SlaUiState.Loading -> {
+            Dialog(onDismissRequest = {}) {
+                CircularProgressIndicator()
+            }
+        }
+        is SlaUiState.Success -> {
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text("Éxito") },
+                text = { Text("La solicitud se ha creado correctamente.") },
+                confirmButton = {
+                    Button(onClick = onDismiss) {
+                        Text("Aceptar")
+                    }
+                }
+            )
+        }
+        is SlaUiState.Error -> {
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text("Error") },
+                text = { Text(uiState.message) },
+                confirmButton = {
+                    Button(onClick = onDismiss) {
+                        Text("Aceptar")
+                    }
+                }
+            )
+        }
+        is SlaUiState.Idle -> {}
     }
 }
