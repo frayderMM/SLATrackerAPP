@@ -4,21 +4,20 @@ import com.google.gson.annotations.SerializedName
 import retrofit2.http.*
 
 /**
- * Interfaz que define los endpoints de tu API .NET
+ * Interfaz principal para las peticiones a la API .NET
+ * Incluye todos los DTOs necesarios en un solo archivo para evitar errores de referencia.
  */
 interface SlaApiService {
 
     // ========================================================================
-    // --- DASHBOARD ---
+    // --- DASHBOARD (Home) ---
     // ========================================================================
 
-    // Endpoint: /api/dashboard/sla/statistics
-    // Respuesta: { "data": { "totalSolicitudes": 150, ... } }
+    // 1. Estadísticas Generales
     @GET("api/dashboard/sla/statistics")
     suspend fun getSlaStatistics(): ApiResponse<SlaStatisticsDto>
 
-    // Endpoint: /api/dashboard/sla/data
-    // Respuesta: { "data": [ { "id": 1, "bloqueTech": "Infraestructura", ... } ] }
+    // 2. Datos Filtrados (Lista principal)
     @GET("api/dashboard/sla/data")
     suspend fun getSlaData(
         @Query("startDate") startDate: String?,
@@ -29,13 +28,13 @@ interface SlaApiService {
         @Query("cumpleSla") cumpleSla: Boolean?
     ): ApiResponse<List<SlaRequestDto>>
 
-    // Endpoint: /api/dashboard/filters
+    // 3. Filtros Disponibles (Catálogos)
     @GET("api/dashboard/filters")
     suspend fun getDashboardFilters(): ApiResponse<DashboardFiltersDto>
 
 
     // ========================================================================
-    // --- CONFIGURACIONES (Catálogos) ---
+    // --- CONFIGURACIONES (Pantallas de Admin) ---
     // ========================================================================
 
     // Áreas
@@ -70,64 +69,92 @@ interface SlaApiService {
 }
 
 // ========================================================================
-// --- DTOs (Modelos de Datos basados en tus JSON) ---
+// --- MODELOS DE DATOS (DTOs) BLINDADOS ---
+// Usamos 'alternate' para soportar tanto PascalCase (C#) como camelCase
 // ========================================================================
 
-// Wrapper genérico para respuestas que vienen dentro de "data": { ... }
+// Wrapper genérico { "data": ... }
 data class ApiResponse<T>(
+    @SerializedName("data", alternate = ["Data"])
     val data: T
 )
 
-// 1. DTO para /api/dashboard/sla/data
+// DTO Principal: Solicitud SLA
 data class SlaRequestDto(
+    @SerializedName("id", alternate = ["Id"])
     val id: Int,
-    val bloqueTech: String,
-    val tipoSolicitud: String,
-    val prioridad: String,
-    val fechaSolicitud: String, // ISO String "2025-11-20T10:30:00"
+
+    @SerializedName("bloqueTech", alternate = ["BloqueTech", "area", "Area"])
+    val bloqueTech: String?,
+
+    @SerializedName("tipoSolicitud", alternate = ["TipoSolicitud"])
+    val tipoSolicitud: String?,
+
+    @SerializedName("prioridad", alternate = ["Prioridad"])
+    val prioridad: String?,
+
+    @SerializedName("fechaSolicitud", alternate = ["FechaSolicitud"])
+    val fechaSolicitud: String?,
+
+    @SerializedName("fechaIngreso", alternate = ["FechaIngreso"])
     val fechaIngreso: String?,
+
+    @SerializedName("diasTranscurridos", alternate = ["DiasTranscurridos"])
     val diasTranscurridos: Int,
+
+    @SerializedName("cumpleSla", alternate = ["CumpleSla"])
     val cumpleSla: Boolean,
+
+    @SerializedName("cumpleSla1", alternate = ["CumpleSla1"])
     val cumpleSla1: Boolean,
+
+    @SerializedName("cumpleSla2", alternate = ["CumpleSla2"])
     val cumpleSla2: Boolean,
+
+    @SerializedName("nombrePersonal", alternate = ["NombrePersonal", "personal"])
     val nombrePersonal: String?,
+
+    @SerializedName("diasUmbralSla", alternate = ["DiasUmbralSla", "diasUmbral"])
     val diasUmbralSla: Int
 )
 
-// 2. DTO para /api/dashboard/sla/statistics
+// DTO Filtros
+data class DashboardFiltersDto(
+    @SerializedName("bloquesTech", alternate = ["BloquesTech"])
+    val bloquesTech: List<String>,
+
+    @SerializedName("tiposSolicitud", alternate = ["TiposSolicitud"])
+    val tiposSolicitud: List<String>,
+
+    @SerializedName("prioridades", alternate = ["Prioridades"])
+    val prioridades: List<String>
+)
+
+// DTO Estadísticas (Statistics)
 data class SlaStatisticsDto(
+    @SerializedName("totalSolicitudes", alternate = ["TotalSolicitudes"])
     val totalSolicitudes: Int,
-    val estadisticasPorTipo: Map<String, StatDetailDto>?,
+
+    @SerializedName("cumplimientoSla1", alternate = ["CumplimientoSla1"])
     val cumplimientoSla1: Double,
-    val cumplimientoSla2: Double,
-    val promedioDiasSla1: Double,
-    val promedioDiasSla2: Double
+
+    @SerializedName("cumplimientoSla2", alternate = ["CumplimientoSla2"])
+    val cumplimientoSla2: Double
 )
 
 data class StatDetailDto(
     val totalSolicitudes: Int,
     val cumpleSla: Int,
-    val porcentajeCumplimiento: Double,
-    val promedioDias: Double,
-    val diasUmbral: Int
+    val porcentajeCumplimiento: Double
 )
 
-// 3. DTO para /api/dashboard/filters
-data class DashboardFiltersDto(
-    val bloquesTech: List<String>,
-    val tiposSolicitud: List<String>,
-    val prioridades: List<String>,
-    val configuracionesSla: List<SlaConfigSimpleDto>
+// DTOs Configuración
+data class AreaDto(
+    val id: Int? = null,
+    val nombre: String,
+    val descripcion: String? = null,
+    val activo: Boolean = true
 )
-
-data class SlaConfigSimpleDto(
-    val id: Int,
-    val codigoSla: String,
-    val tipoSolicitud: String,
-    val diasUmbral: Int
-)
-
-// --- DTOs de Configuración (Tablas Catálogo) ---
 
 data class RequestTypeDto(
     @SerializedName("idTipoSolicitud") val id: Int? = null,
@@ -145,10 +172,4 @@ data class PriorityDto(
     val icon: String?,
     val color: String?,
     val activo: Boolean
-)
-
-data class AreaDto(
-    // Asumiendo estructura basada en los otros catálogos, ajusta si varía
-    val id: Int? = null,
-    val nombre: String
 )

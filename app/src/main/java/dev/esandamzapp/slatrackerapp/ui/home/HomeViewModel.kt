@@ -18,7 +18,7 @@ import java.time.LocalDate
 data class RequestData(
     val id: String,
     val title: String,
-    val requestType: String, // Campo clave para agrupar las métricas
+    val requestType: String, // Clave para agrupación dinámica
     val daysInProcess: Int,
     val requestDate: String,
     val entryDate: String?,
@@ -38,34 +38,34 @@ enum class RequestPriority {
 // Filtros de UI
 data class DashboardFilters(
     val startDate: LocalDate = LocalDate.of(2023, 1, 1),
-    val endDate: LocalDate = LocalDate.now().plusYears(5),
-    val slaType: List<String> = listOf("Todos"),
-    val status: List<String> = listOf("Todos"),
-    val technologyBlock: List<String> = listOf("Todos"),
-    val priority: List<String> = listOf("Todos")
+    val endDate: LocalDate = LocalDate.now().plusYears(2),
+    val slaType: List<String> = listOf("Todos"),        // Mapea a 'tipoSolicitud'
+    val status: List<String> = listOf("Todos"),         // Mapea a 'cumpleSla'
+    val technologyBlock: List<String> = listOf("Todos"),// Mapea a 'bloqueTech'
+    val priority: List<String> = listOf("Todos")        // Mapea a 'prioridad'
 )
 
-// Estructura para las tarjetas de métricas específicas
+// Estructura para métricas dinámicas
 data class SlaMetric(
-    val label: String,        // Ej: "Cumplimiento Nuevo Personal"
-    val percentage: Double,   // Ej: 65.85
-    val complyingCount: Int,  // Ej: 27
-    val totalCount: Int,      // Ej: 41
-    val averageDays: Int      // Ej: 35 días
+    val label: String,
+    val percentage: Double,
+    val complyingCount: Int,
+    val totalCount: Int,
+    val averageDays: Int
 )
 
-// KPIs de UI (Sincronizado con HomeScreen)
+// Estado Global del Dashboard
 data class DashboardKpis(
-    val globalEfficacy: Double = 0.0, // Eficacia Global
-    val totalRequests: Int = 0,       // Total Solicitudes
-    val pendingRequests: Int = 0,     // Para la campanita
-    val averageDays: Int = 0,         // Promedio general
+    val globalEfficacy: Double = 0.0,
+    val totalRequests: Int = 0,
+    val pendingRequests: Int = 0,
+    val averageDays: Int = 0, // Días promedio globales
 
-    // Lista dinámica de métricas por tipo
     val typeMetrics: List<SlaMetric> = emptyList(),
 
     // Datos para gráficos
     val complianceByBlock: Map<String, Int> = emptyMap(),
+    val complianceByPriority: Map<String, Int> = emptyMap(),
     val statusDistribution: Map<String, Int> = emptyMap()
 )
 
@@ -83,15 +83,47 @@ class HomeViewModel : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private var _allBloques: List<String> = emptyList()
+    // Listas maestras para dropdowns
+    private val _availableBlocks = MutableStateFlow(listOf("Todos"))
+    val availableBlocks: StateFlow<List<String>> = _availableBlocks.asStateFlow()
+
+    private val _availableTypes = MutableStateFlow(listOf("Todos"))
+    val availableTypes: StateFlow<List<String>> = _availableTypes.asStateFlow()
+
+    private val _availablePriorities = MutableStateFlow(listOf("Todos"))
+    val availablePriorities: StateFlow<List<String>> = _availablePriorities.asStateFlow()
 
     init {
-        loadDashboardData()
+        loadInitialData()
+    }
+
+    private fun loadInitialData() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                fetchFiltersFromBackend()
+                fetchDataFromBackend()
+            } catch (e: Exception) {
+                Log.e("HomeViewModel", "Error inicial: ${e.message}", e)
+                generateFallbackData("Error Red: ${e.message}")
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 
     fun updateFilters(newFilters: DashboardFilters) {
         _filters.value = newFilters
-        loadDashboardData()
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                fetchDataFromBackend()
+            } catch (e: Exception) {
+                Log.e("HomeViewModel", "Error actualizando filtros: ${e.message}")
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 
     fun toggleFilterOption(currentList: List<String>, option: String): List<String> {
@@ -108,72 +140,80 @@ class HomeViewModel : ViewModel() {
         }
     }
 
-    fun loadDashboardData() {
-        viewModelScope.launch {
-            _isLoading.value = true
-            try {
-                fetchDataFromBackend()
-            } catch (e: Exception) {
-                Log.e("HomeViewModel", "Error API (Usando Fallback): ${e.message}", e)
-                val fallbackData = generateFallbackMockData()
-                _requests.value = fallbackData
-                recalculateKpis(fallbackData)
-            } finally {
-                _isLoading.value = false
+    private suspend fun fetchFiltersFromBackend() {
+        try {
+            val response = withContext(Dispatchers.IO) {
+                RetrofitClient.api.getDashboardFilters()
             }
+            val data = response.data
+
+            _availableBlocks.value = listOf("Todos") + data.bloquesTech
+            _availableTypes.value = listOf("Todos") + data.tiposSolicitud
+            _availablePriorities.value = listOf("Todos") + data.prioridades
+        } catch (e: Exception) {
+            Log.w("HomeViewModel", "No se cargaron filtros: ${e.message}")
         }
     }
 
     private suspend fun fetchDataFromBackend() {
         val currentFilters = _filters.value
 
-        // Cargar filtros maestros si es necesario
-        if (_allBloques.isEmpty()) {
-            try {
-                val filtersResponse = withContext(Dispatchers.IO) { RetrofitClient.api.getDashboardFilters() }
-                _allBloques = filtersResponse.data.bloquesTech
-            } catch (e: Exception) {
-                Log.w("HomeViewModel", "No se pudieron cargar los filtros maestros")
-            }
-        }
+        // Corrección de fechas para PostgreSQL (UTC ISO format)
+        val startDateStr = "${currentFilters.startDate}T00:00:00Z"
+        val endDateStr = "${currentFilters.endDate}T23:59:59Z"
 
-        val startDateStr = currentFilters.startDate.toString()
-        val endDateStr = currentFilters.endDate.toString()
+        val bloqueParam = if (currentFilters.technologyBlock.isEmpty() || currentFilters.technologyBlock.contains("Todos")) null
+        else currentFilters.technologyBlock.joinToString(",")
 
-        val bloqueTechParam = if (currentFilters.technologyBlock.contains("Todos")) null else currentFilters.technologyBlock.joinToString(",")
-        val tipoSolicitudParam = if (currentFilters.slaType.contains("Todos")) null else currentFilters.slaType.joinToString(",")
-        val prioridadParam = if (currentFilters.priority.contains("Todos")) null else currentFilters.priority.joinToString(",")
+        val tipoParam = if (currentFilters.slaType.isEmpty() || currentFilters.slaType.contains("Todos")) null
+        else currentFilters.slaType.joinToString(",")
 
-        val cumpleSlaParam: Boolean? = when {
-            currentFilters.status.contains("CUMPLE") && !currentFilters.status.any { it == "NO CUMPLE" || it == "RIESGO" } -> true
-            currentFilters.status.any { it == "NO CUMPLE" || it == "RIESGO" } && !currentFilters.status.contains("CUMPLE") -> false
+        val prioParam = if (currentFilters.priority.isEmpty() || currentFilters.priority.contains("Todos")) null
+        else currentFilters.priority.joinToString(",")
+
+        val cumpleParam: Boolean? = when {
+            currentFilters.status.contains("CUMPLE") && !currentFilters.status.contains("NO_CUMPLE") -> true
+            currentFilters.status.contains("NO_CUMPLE") && !currentFilters.status.contains("CUMPLE") -> false
             else -> null
         }
+
+        Log.d("HomeViewModel", "Requesting: $startDateStr a $endDateStr")
 
         val apiResponse = withContext(Dispatchers.IO) {
             RetrofitClient.api.getSlaData(
                 startDate = startDateStr,
                 endDate = endDateStr,
-                bloqueTech = bloqueTechParam,
-                tipoSolicitud = tipoSolicitudParam,
-                prioridad = prioridadParam,
-                cumpleSla = cumpleSlaParam
+                bloqueTech = bloqueParam,
+                tipoSolicitud = tipoParam,
+                prioridad = prioParam,
+                cumpleSla = cumpleParam
             )
         }
 
-        val mappedData = apiResponse.data.map { dto -> mapDtoToUiModel(dto) }
+        val mappedData = apiResponse.data.mapNotNull { dto ->
+            try {
+                mapDtoToUiModel(dto)
+            } catch (e: Exception) {
+                Log.e("HomeViewModel", "Error mapeo ID ${dto.id}")
+                null
+            }
+        }
+
         _requests.value = mappedData
         recalculateKpis(mappedData)
     }
 
     private fun mapDtoToUiModel(dto: SlaRequestDto): RequestData {
-        val prioEnum = when(dto.prioridad.uppercase()) {
-            "CRITICA", "CRÍTICA" -> RequestPriority.CRITICA
-            "ALTA" -> RequestPriority.ALTA
-            "MEDIA" -> RequestPriority.MEDIA
-            "BAJA" -> RequestPriority.BAJA
-            else -> RequestPriority.MEDIA
-        }
+        val rawPrio = dto.prioridad ?: "Media"
+        val prioEnum = try {
+            when(rawPrio.uppercase()) {
+                "CRITICA", "CRÍTICA" -> RequestPriority.CRITICA
+                "ALTA" -> RequestPriority.ALTA
+                "MEDIA" -> RequestPriority.MEDIA
+                "BAJA" -> RequestPriority.BAJA
+                else -> RequestPriority.MEDIA
+            }
+        } catch (e: Exception) { RequestPriority.MEDIA }
 
         val statusEnum = if (dto.cumpleSla) {
             RequestStatus.CUMPLE
@@ -183,19 +223,20 @@ class HomeViewModel : ViewModel() {
             else RequestStatus.PENDIENTE
         }
 
-        val fechaSafe = dto.fechaSolicitud ?: ""
+        val fechaSafe = dto.fechaSolicitud ?: LocalDate.now().toString()
         val rawDate = if (fechaSafe.length >= 10) fechaSafe.take(10) else fechaSafe
-        val rawEntryDate = if ((dto.fechaIngreso ?: "").length >= 10) dto.fechaIngreso!!.take(10) else dto.fechaIngreso
+        val ingresoSafe = dto.fechaIngreso
+        val rawEntryDate = if (ingresoSafe != null && ingresoSafe.length >= 10) ingresoSafe.take(10) else ingresoSafe
 
         return RequestData(
             id = dto.id.toString(),
-            title = "${dto.tipoSolicitud} - ${dto.nombrePersonal ?: "Sin asignar"}",
-            requestType = dto.tipoSolicitud,
+            title = "${dto.tipoSolicitud ?: "Gral"} - ${dto.nombrePersonal ?: "N/A"}",
+            requestType = dto.tipoSolicitud ?: "General",
             daysInProcess = dto.diasTranscurridos,
             requestDate = rawDate,
-            entryDate = if (rawEntryDate.isNullOrEmpty()) null else rawEntryDate,
+            entryDate = rawEntryDate,
             status = statusEnum,
-            technologyBlock = dto.bloqueTech,
+            technologyBlock = dto.bloqueTech ?: "Sin Asignar",
             priority = prioEnum
         )
     }
@@ -203,37 +244,55 @@ class HomeViewModel : ViewModel() {
     private fun recalculateKpis(data: List<RequestData>) {
         val total = data.size
 
+        if (total == 0) {
+            _kpis.value = DashboardKpis()
+            return
+        }
+
         val globalComplying = data.count { it.status == RequestStatus.CUMPLE }
         val globalEfficacy = if (total > 0) (globalComplying.toDouble() / total) * 100 else 0.0
         val pending = data.count { it.status == RequestStatus.PENDIENTE }
-        val averageDays = if (total > 0) data.map { it.daysInProcess }.average().toInt() else 0
+
+        // CORRECCIÓN AQUÍ: Definimos la variable local como 'avgDays'
+        val avgDays = if (total > 0) data.map { it.daysInProcess }.average().toInt() else 0
 
         val metricsByType = data.groupBy { it.requestType }.map { (type, requests) ->
-            val typeTotal = requests.size
-            val typeComplying = requests.count { it.status == RequestStatus.CUMPLE }
-            val percentage = if (typeTotal > 0) (typeComplying.toDouble() / typeTotal) * 100 else 0.0
-            val typeAvgDays = if (typeTotal > 0) requests.map { it.daysInProcess }.average().toInt() else 0
+            val subTotal = requests.size
+            val subComplying = requests.count { it.status == RequestStatus.CUMPLE }
+            val subPct = if (subTotal > 0) (subComplying.toDouble() / subTotal) * 100 else 0.0
+            val subAvg = if (subTotal > 0) requests.map { it.daysInProcess }.average().toInt() else 0
 
             SlaMetric(
                 label = "Cumplimiento $type",
-                percentage = percentage,
-                complyingCount = typeComplying,
-                totalCount = typeTotal,
-                averageDays = typeAvgDays
+                percentage = subPct,
+                complyingCount = subComplying,
+                totalCount = subTotal,
+                averageDays = subAvg
             )
         }.sortedByDescending { it.totalCount }
 
-        val complianceByBlock = if (_filters.value.technologyBlock.contains("Todos") && _allBloques.isNotEmpty()) {
-            _allBloques.associateWith { blockName ->
-                val requestsForBlock = data.filter { it.technologyBlock == blockName }
-                val ok = requestsForBlock.count { it.status == RequestStatus.CUMPLE }
-                if (requestsForBlock.isNotEmpty()) (ok * 100) / requestsForBlock.size else 0
-            }
+        // Gráfico 1: Bloques
+        val blocksSource = if (_availableBlocks.value.size > 1 && (_filters.value.technologyBlock.contains("Todos") || _filters.value.technologyBlock.isEmpty())) {
+            _availableBlocks.value.filter { it != "Todos" }
         } else {
-            data.groupBy { it.technologyBlock }.mapValues { (_, reqs) ->
-                val ok = reqs.count { it.status == RequestStatus.CUMPLE }
-                if (reqs.isNotEmpty()) (ok * 100) / reqs.size else 0
-            }
+            data.map { it.technologyBlock }.distinct()
+        }
+
+        val complianceByBlock = blocksSource.associateWith { block ->
+            val reqs = data.filter { it.technologyBlock == block }
+            if (reqs.isNotEmpty()) (reqs.count { it.status == RequestStatus.CUMPLE } * 100) / reqs.size else 0
+        }
+
+        // Gráfico 2: Prioridades
+        val prioritiesSource = if (_availablePriorities.value.size > 1 && (_filters.value.priority.contains("Todos") || _filters.value.priority.isEmpty())) {
+            _availablePriorities.value.filter { it != "Todos" }
+        } else {
+            data.map { it.priority.name }.distinct()
+        }
+
+        val complianceByPriority = prioritiesSource.associateWith { priorityName ->
+            val reqs = data.filter { it.priority.name.equals(priorityName, ignoreCase = true) }
+            if (reqs.isNotEmpty()) (reqs.count { it.status == RequestStatus.CUMPLE } * 100) / reqs.size else 0
         }
 
         val statusDist = data.groupBy { it.status.name }.mapValues { it.value.size }
@@ -242,17 +301,19 @@ class HomeViewModel : ViewModel() {
             globalEfficacy = globalEfficacy,
             totalRequests = total,
             pendingRequests = pending,
-            averageDays = averageDays,
+            averageDays = avgDays, // Asignamos la variable local 'avgDays' al parámetro 'averageDays'
             typeMetrics = metricsByType,
             complianceByBlock = complianceByBlock,
+            complianceByPriority = complianceByPriority,
             statusDistribution = statusDist
         )
     }
 
-    private fun generateFallbackMockData(): List<RequestData> {
-        return listOf(
-            RequestData("M1", "Mock - Juan", "Nuevo Personal", 35, "2025-01-01", null, RequestStatus.CUMPLE, "Infraestructura", RequestPriority.ALTA),
-            RequestData("M2", "Mock - Ana", "Reemplazo", 20, "2025-01-02", null, RequestStatus.NO_CUMPLE, "Desarrollo", RequestPriority.MEDIA)
+    private fun generateFallbackData(errorMessage: String) {
+        val mock = listOf(
+            RequestData("ERR", errorMessage, "ERROR SERVER", 0, "2025-01-01", null, RequestStatus.RIESGO, "Logs", RequestPriority.CRITICA)
         )
+        _requests.value = mock
+        recalculateKpis(mock)
     }
 }
