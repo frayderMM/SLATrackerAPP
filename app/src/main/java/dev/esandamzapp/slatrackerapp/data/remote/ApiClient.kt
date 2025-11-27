@@ -1,36 +1,31 @@
 package dev.esandamzapp.slatrackerapp.data.remote
 
-import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.DefaultRequest
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.header
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.json.Json
 
 object ApiClient {
 
-    // Asegúrate de que esta URL sea la correcta para tu backend.
-    private const val BASE_URL = "http://10.0.2.2:5192/"
+    // --- IMPORTANTE ---
+    // Reemplaza esta cadena con un token JWT válido obtenido de tu backend si el actual expira.
+    private const val AUTH_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1laWQiOiIzIiwidW5pcXVlX25hbWUiOiJhZG1pbiIsImVtYWlsIjoiYWRtaW5AZXhhbXBsZS5jb20iLCJuYmYiOjE3NjQyNzM0NjIsImV4cCI6MTc2NDI3NzA2MiwiaWF0IjoxNzY0MjczNDYyLCJpc3MiOiJzaW5ndWxhIiwiYXVkIjoic2luZ3VsYV91c2VycyJ9.KjwsZldKgh7GfYU8R3c5bCvSytns3LJojF7sAIg-mY0"
 
-    // Interceptor para ver los logs de las peticiones en Logcat (muy útil para depurar).
-    private val logging = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
-    }
+    val client = HttpClient(CIO) {
+        install(ContentNegotiation) {
+            json(Json {
+                ignoreUnknownKeys = true
+                isLenient = true
+            })
+        }
 
-    // Cliente OkHttp que incluye el interceptor de logs y el de autenticación.
-    private val client = OkHttpClient.Builder()
-        .addInterceptor(logging)
-        .addInterceptor(AuthInterceptor()) // Añadimos el interceptor de autenticación
-        .build()
-
-    /**
-     * Instancia de Retrofit configurada. 
-     * Es un `lazy` delegate, lo que significa que se creará solo una vez, la primera vez que se acceda a él.
-     */
-    val apiService: ApiService by lazy {
-        Retrofit.Builder()
-            .baseUrl(BASE_URL)
-            .client(client)
-            .addConverterFactory(GsonConverterFactory.create()) // Usamos Gson para la conversión de JSON
-            .build()
-            .create(ApiService::class.java)
+        // Instala el plugin DefaultRequest para añadir la cabecera de autorización
+        // a todas las peticiones salientes.
+        install(DefaultRequest) {
+            header("Authorization", "Bearer $AUTH_TOKEN")
+        }
     }
 }

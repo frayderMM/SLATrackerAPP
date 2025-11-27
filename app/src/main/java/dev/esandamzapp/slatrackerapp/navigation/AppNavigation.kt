@@ -8,7 +8,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.example.app.ui.home.HomeScreen
-//import com.example.app.ui.statistics.StatisticsScreen
+
 import dev.esandamzapp.slatrackerapp.ui.auth.LoginScreen
 import dev.esandamzapp.slatrackerapp.ui.loadProcessing.ImportarDatosExcelScreen
 import dev.esandamzapp.slatrackerapp.ui.notifications.NotificationsScreen
@@ -17,6 +17,7 @@ import dev.esandamzapp.slatrackerapp.ui.profile.ProfileScreen
 import dev.esandamzapp.slatrackerapp.ui.reports.ReportsScreen
 import dev.esandamzapp.slatrackerapp.ui.settings.SettingsScreen
 import dev.esandamzapp.slatrackerapp.ui.sla.NewRequestScreen
+import dev.esandamzapp.slatrackerapp.ui.statistics.StatisticsScreen
 
 @Composable
 fun AppNavigation() {
