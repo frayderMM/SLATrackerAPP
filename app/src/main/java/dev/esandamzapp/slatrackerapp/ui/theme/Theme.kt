@@ -33,6 +33,8 @@ private val LightColorScheme = lightColorScheme(
     */
 )
 
+
+
 @Composable
 fun SLATrackerAPPTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
