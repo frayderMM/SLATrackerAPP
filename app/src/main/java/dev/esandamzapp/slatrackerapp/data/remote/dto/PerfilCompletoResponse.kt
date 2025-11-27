@@ -7,6 +7,12 @@ data class PerfilCompletoResponse(
     val area: AreaData?
 )
 
+data class UsuarioProfile(
+    val idUsuario: Int,
+    val correo: String,
+    val nombreUsuario: String?
+)
+
 data class PersonalData(
     val idPersonal: Int,
     val idUsuario: Int,

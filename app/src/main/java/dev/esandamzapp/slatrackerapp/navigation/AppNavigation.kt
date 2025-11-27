@@ -8,7 +8,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.example.app.ui.home.HomeScreen
-import com.example.app.ui.statistics.StatisticsScreen
+//import com.example.app.ui.statistics.StatisticsScreen
 import dev.esandamzapp.slatrackerapp.ui.auth.LoginScreen
 import dev.esandamzapp.slatrackerapp.ui.loadProcessing.ImportarDatosExcelScreen
 import dev.esandamzapp.slatrackerapp.ui.notifications.NotificationsScreen
@@ -113,9 +113,15 @@ fun AppNavigation() {
             // ===============================
             // OTRAS PANTALLAS
             // ===============================
-            composable("statistics") { StatisticsScreen() }
+            //composable("statistics") { StatisticsScreen() }
             composable("newRequest") { NewRequestScreen() }
-            composable("notifications") { NotificationsScreen(navController) }
+            composable("notifications") {
+                val userId = navController.previousBackStackEntry
+                    ?.savedStateHandle
+                    ?.get<Int>("userId") ?: 0 // Default to 0, or handle error appropriately
+
+                NotificationsScreen(navController = navController, userId = userId)
+            }
             composable("reports") { ReportsScreen(navController) }
             composable("links") { LinksOfInterestScreen(navController) }
             composable("settings") { SettingsScreen(navController) }
