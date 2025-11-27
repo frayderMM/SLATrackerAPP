@@ -9,11 +9,6 @@ class ProfileRepository {
     private val api = ApiClient.apiService
 
     suspend fun getPerfilCompleto(token: String, userId: Int): PerfilCompletoResponse {
-        val response = api.getPerfilCompleto(userId, "Bearer $token")
-
-        if (!response.isSuccessful)
-            throw HttpException(response)
-
-        return response.body()!!
+        return api.getPerfilCompleto(userId)
     }
 }

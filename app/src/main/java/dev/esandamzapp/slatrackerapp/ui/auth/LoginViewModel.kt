@@ -22,9 +22,10 @@ class LoginViewModel : ViewModel() {
 
                 val res = repository.login(username, password)
 
+                // Corregido: El userId viene directamente en la respuesta, no en un sub-objeto.
                 _loginState.value = LoginState.Success(
                     token = res.token,
-                    userId = res.usuario.idUsuario
+                    userId = res.userId
                 )
 
 
