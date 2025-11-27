@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.asStateFlow
 class ConfigurationViewModel : ViewModel() {
 
     // --- Tipos de SLA ---
-    private val _slaTypes = MutableStateFlow(listOf("SLA1", "SLA2"))
+    private val _slaTypes = MutableStateFlow(listOf("SLA 1 (Crítico)", "SLA 2 (Estándar)", "SLA 3 (Bajo)"))
     val slaTypes = _slaTypes.asStateFlow()
 
     fun addSlaType(newType: String) {
@@ -47,7 +47,7 @@ class ConfigurationViewModel : ViewModel() {
     }
 
     // --- Roles / Bloques Tecnológicos ---
-    private val _roles = MutableStateFlow(listOf("Frontend", "Backend", "Data Science", "RRHH", "Diseño"))
+    private val _roles = MutableStateFlow(listOf("Frontend", "Backend", "Data Science", "RRHH", "Diseño", "DevOps", "Producto"))
     val roles = _roles.asStateFlow()
 
     fun addRole(newRole: String) {
