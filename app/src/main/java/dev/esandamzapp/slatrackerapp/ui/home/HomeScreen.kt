@@ -1,4 +1,4 @@
-package com.example.app.ui.home
+package dev.esandamzapp.slatrackerapp.ui.home
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*

@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -26,7 +27,10 @@ import dev.esandamzapp.slatrackerapp.R
 fun LoginScreen(
     onLoginSuccess: (String, Int) -> Unit
 ) {
-    val viewModel: LoginViewModel = viewModel()
+    val context = LocalContext.current
+    val viewModel: LoginViewModel = viewModel(
+        factory = LoginViewModelFactory(context.applicationContext as android.app.Application)
+    )
     val loginState by viewModel.loginState.collectAsState()
 
     var username by remember { mutableStateOf("") }

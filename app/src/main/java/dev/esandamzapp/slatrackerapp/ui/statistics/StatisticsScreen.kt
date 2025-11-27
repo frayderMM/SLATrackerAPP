@@ -1,22 +1,16 @@
 package dev.esandamzapp.slatrackerapp.ui.statistics
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-package com.example.app.ui.statistics
-
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,11 +22,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.esandamzapp.slatrackerapp.ui.statistics.ReportPreviewScreen
 import dev.esandamzapp.slatrackerapp.ui.theme.SLATrackerAPPTheme
+import java.text.SimpleDateFormat
+import java.util.*
 
-
-// Colores inspirados en tu Figma (azul + naranja + lilas)
+// Colores del proyecto
 private val HeaderBlue = Color(0xFF071C4D)
 private val AccentOrange = Color(0xFFFF7A00)
 private val LightLilac = Color(0xFFF6F2FF)
@@ -40,495 +34,1032 @@ private val CardBorderLilac = Color(0xFFE3DFF5)
 private val KpiBackground = Color(0xFFF6F2FF)
 private val ChipUnselected = Color(0xFFE0E0E0)
 private val TextSoft = Color(0xFF666666)
+private val AlertBackground = Color(0xFFFFF3E0)
+private val AlertBorder = Color(0xFFFFB74D)
+
+// Data classes para mockear datos
+data class BloqueTechDetail(
+    val bloqueTech: String,
+    val solicitudes: Int,
+    val slaPercentage: Int,
+    val tiempoPromedio: Int,
+    val cumple: Boolean
+)
+
+data class IncumplimientoDetalle(
+    val bloqueTech: String,
+    val incumplimientos: Int,
+    val porcentajeDelTotal: Int,
+    val retrasoPromedio: Int
+)
 
 @Composable
-fun StatisticsScreen() {
-    var selectedSLA by remember { mutableStateOf("Todos") }
-    var selectedRole by remember { mutableStateOf("Todos") }
-    var showReportPreview by remember { mutableStateOf(false) }
+fun StatisticsScreen(
+    onHistoryClick: () -> Unit = {},
+    onGeneratePdfClick: () -> Unit = {},
+    viewModel: StatisticsViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    
+    var showDatePickerDialog by remember { mutableStateOf(false) }
+    var datePickerMode by remember { mutableStateOf("start") } // "start" o "end"
 
-    // Mock de datos
-    val mockCumplimiento = 63
-    val mockPromedioDias = 33
-    val mockTotal = 8
+    val bloqueTechOptions = listOf("Todos", "Backend", "Frontend", "QA", "DevOps", "Infraestructura")
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF8F8FF))
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
-            // ---------- HEADER AZUL (ESTADÍSTICAS) ----------
-            StatisticsHeader()
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Header
+            StatisticsHeader(onHistoryClick = onHistoryClick)
 
-            // ---------- CONTENIDO SCROLLEABLE ----------
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-
-                // Filtros
-                item {
-                    FiltersCard(
-                        selectedSLA = selectedSLA,
-                        onSLAChange = { selectedSLA = it },
-                        selectedRole = selectedRole,
-                        onRoleChange = { selectedRole = it }
-                    )
-                }
-
-                // KPIs
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            // Loading o Error
+            when {
+                uiState.isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
-                        KpiCard(
-                            title = "Tasa de Cumplimiento",
-                            value = "$mockCumplimiento%",
-                            modifier = Modifier.weight(1f)
-                        )
-                        KpiCard(
-                            title = "Promedio de Días",
-                            value = "$mockPromedioDias",
-                            modifier = Modifier.weight(1f)
-                        )
+                        CircularProgressIndicator(color = AccentOrange)
                     }
                 }
-
-                // Gráficos mock
-                item {
-                    ChartCard(
-                        title = "Distribución General",
-                        subtitle = "Cumple vs No Cumple"
-                    )
+                uiState.error != null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "Error: ${uiState.error}",
+                                color = Color.Red,
+                                fontSize = 16.sp,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = { viewModel.loadDashboardData() }) {
+                                Text("Reintentar")
+                            }
+                        }
+                    }
                 }
+                else -> {
+                    // Contenido scrolleable
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // 1. FILTROS DEL REPORTE
+                        item {
+                            FiltrosReporteCard(
+                                selectedSlaType = uiState.selectedSlaType,
+                                onSlaTypeChange = { viewModel.updateSlaType(it) },
+                                startDate = uiState.startDate,
+                                onStartDateClick = {
+                                    datePickerMode = "start"
+                                    showDatePickerDialog = true
+                                },
+                                endDate = uiState.endDate,
+                                onEndDateClick = {
+                                    datePickerMode = "end"
+                                    showDatePickerDialog = true
+                                },
+                                selectedBloquesTech = uiState.selectedBloquesTech,
+                                bloqueTechOptions = bloqueTechOptions,
+                                onBloquesTechChange = { viewModel.updateBloquesTech(it) },
+                                onLimpiarFiltros = { viewModel.clearFilters() },
+                                onAplicarFiltros = { viewModel.applyFilters() }
+                            )
+                        }
 
-                item {
-                    ChartCard(
-                        title = "Cumplimiento por Tipo de SLA",
-                        subtitle = "SLA1 vs SLA2"
-                    )
+                        // 2. KPIs
+                        item {
+                            Text(
+                                text = "KPIs - ${uiState.selectedSlaType}",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = HeaderBlue,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                        }
+
+                        item {
+                            KPIsGrid(
+                                cumplimiento = uiState.cumplimiento,
+                                totalSolicitudes = uiState.totalSolicitudes,
+                                tiempoPromedio = uiState.tiempoPromedio,
+                                enAlerta = uiState.enAlerta,
+                                porcentajeIncumplidas = uiState.porcentajeIncumplidas,
+                                startDate = uiState.startDate.ifEmpty { "N/A" },
+                                endDate = uiState.endDate.ifEmpty { "N/A" }
+                            )
+                        }
+
+                        // 3. DETALLE POR ROL
+                        item {
+                            DetallePorRolCard(
+                                selectedSlaType = uiState.selectedSlaType,
+                                detalles = uiState.detallePorRol
+                            )
+                        }
+
+                        // 4. ANÁLISIS DE INCUMPLIMIENTOS
+                        if (uiState.totalIncumplimientos > 0) {
+                            item {
+                                AnalisisIncumplimientosCard(
+                                    selectedSlaType = uiState.selectedSlaType,
+                                    totalIncumplimientos = uiState.totalIncumplimientos,
+                                    retrasoPromedio = uiState.retrasoPromedio,
+                                    retrasoMaximo = uiState.retrasoMaximo,
+                                    totalSolicitudes = uiState.totalSolicitudes,
+                                    diasUmbral = uiState.diasUmbral,
+                                    incumplimientosPorBloque = uiState.incumplimientosPorBloque
+                                )
+                            }
+                        }
+
+                        // 5. CONFIGURACIÓN DEL REPORTE
+                        item {
+                            ConfiguracionReporteCard(
+                                reportName = uiState.reportName,
+                                onReportNameChange = { viewModel.updateReportName(it) },
+                                sugerencia = "Reporte_SLA_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}"
+                            )
+                        }
+
+                        // 6. BOTONES DE ACCIÓN
+                        item {
+                            BotonesAccionCard(
+                                onGenerarPdf = onGeneratePdfClick,
+                                onHistorial = onHistoryClick,
+                                enabled = uiState.totalSolicitudes > 0
+                            )
+                        }
+
+                        // Espaciado final
+                        item {
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+                    }
                 }
-
-                // Resumen ejecutivo
-                item {
-                    ExecutiveSummaryCard(
-                        total = mockTotal,
-                        cumplimiento = mockCumplimiento,
-                        promedio = mockPromedioDias
-                    )
-                }
-
-                // Tarjeta de Generar reporte
-                item {
-                    GenerateReportCard(
-                        registros = mockTotal,
-                        cumplimiento = mockCumplimiento,
-                        onClick = { showReportPreview = true }
-                    )
-                }
-            }
-        }
-
-        // ---------- OVERLAY PARA PREVISUALIZACIÓN DE REPORTE ----------
-        if (showReportPreview) {
-            Surface(
-                color = Color.Black.copy(alpha = 0.35f),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.35f))
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize(),
-                    contentAlignment = Alignment.BottomCenter
-                ) {
-                    ReportPreviewScreen(
-                        onClose = { showReportPreview = false },
-                        onExportPDF = { /* TODO: lógica futura */ },
-                        onSendEmail = { /* TODO: lógica futura */ }
-                    )
-                }
-            }
-        }
-    }
-}
-
-// ----------------------------------------------------
-// HEADER
-// ----------------------------------------------------
-
-@Composable
-private fun StatisticsHeader() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(120.dp)
-            .background(HeaderBlue)
-            .padding(horizontal = 16.dp, vertical = 18.dp)
-    ) {
-        Column(
-            modifier = Modifier.align(Alignment.CenterStart)
-        ) {
-            Text(
-                text = "Estadísticas",
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "Análisis de cumplimiento SLA",
-                color = Color.White.copy(alpha = 0.85f),
-                fontSize = 14.sp
-            )
-        }
-
-        // Icono de notificaciones + badge (mock)
-        Box(
-            modifier = Modifier.align(Alignment.TopEnd)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("🔔", fontSize = 18.sp)
-            }
-
-            Box(
-                modifier = Modifier
-                    .size(18.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFFF4B4B))
-                    .align(Alignment.TopEnd),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "4",
-                    color = Color.White,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
-}
-
-// ----------------------------------------------------
-// FILTROS
-// ----------------------------------------------------
-
-@Composable
-private fun FiltersCard(
-    selectedSLA: String,
-    onSLAChange: (String) -> Unit,
-    selectedRole: String,
-    onRoleChange: (String) -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = LightLilac
-        ),
-        border = CardDefaults.outlinedCardBorder().copy(width = 0.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "Filtros",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
-
-            // Tipo SLA
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Tipo SLA", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilterChip(
-                        text = "Todos",
-                        selected = selectedSLA == "Todos",
-                        onClick = { onSLAChange("Todos") }
-                    )
-                    FilterChip(
-                        text = "SLA1",
-                        selected = selectedSLA == "SLA1",
-                        onClick = { onSLAChange("SLA1") }
-                    )
-                    FilterChip(
-                        text = "SLA2",
-                        selected = selectedSLA == "SLA2",
-                        onClick = { onSLAChange("SLA2") }
-                    )
-                }
-            }
-
-            // Rol / Área
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Rol / Área", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                FilterChip(
-                    text = selectedRole,
-                    selected = true,
-                    onClick = { /* luego abrirá un dropdown */ }
-                )
             }
         }
     }
-}
 
-@Composable
-private fun FilterChip(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    val bg = if (selected) AccentOrange else ChipUnselected
-    val txtColor = if (selected) Color.White else Color(0xFF333333)
-
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(999.dp),
-        color = bg
-    ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
-            color = txtColor,
-            fontSize = 14.sp
+    // DatePicker Dialog (mock - se implementará después)
+    if (showDatePickerDialog) {
+        AlertDialog(
+            onDismissRequest = { showDatePickerDialog = false },
+            title = { Text(if (datePickerMode == "start") "Seleccionar Fecha Inicio" else "Seleccionar Fecha Fin") },
+            text = { Text("Formato: yyyy-MM-dd") },
+            confirmButton = {
+                TextButton(onClick = {
+                    // Mock: asignar fecha actual
+                    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                    val currentDate = dateFormat.format(Date())
+                    if (datePickerMode == "start") {
+                        viewModel.updateStartDate(currentDate)
+                    } else {
+                        viewModel.updateEndDate(currentDate)
+                    }
+                    showDatePickerDialog = false
+                }) {
+                    Text("Usar Fecha Actual")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePickerDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
         )
     }
 }
 
-// ----------------------------------------------------
-// KPIs
-// ----------------------------------------------------
+// ============================================
+// COMPONENTES
+// ============================================
+
+@Composable
+private fun StatisticsHeader(onHistoryClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(100.dp)
+            .background(HeaderBlue)
+            .padding(horizontal = 16.dp, vertical = 16.dp)
+    ) {
+        Column(modifier = Modifier.align(Alignment.CenterStart)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Assessment,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Reportes",
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Genera y exporta reportes de cumplimiento SLA",
+                color = Color.White.copy(alpha = 0.85f),
+                fontSize = 13.sp
+            )
+        }
+
+        IconButton(
+            onClick = onHistoryClick,
+            modifier = Modifier.align(Alignment.TopEnd)
+        ) {
+            Icon(
+                imageVector = Icons.Default.History,
+                contentDescription = "Historial",
+                tint = Color.White
+            )
+        }
+    }
+}
+
+@Composable
+private fun FiltrosReporteCard(
+    selectedSlaType: String,
+    onSlaTypeChange: (String) -> Unit,
+    startDate: String,
+    onStartDateClick: () -> Unit,
+    endDate: String,
+    onEndDateClick: () -> Unit,
+    selectedBloquesTech: List<String>,
+    bloqueTechOptions: List<String>,
+    onBloquesTechChange: (List<String>) -> Unit,
+    onLimpiarFiltros: () -> Unit,
+    onAplicarFiltros: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.FilterAlt,
+                    contentDescription = null,
+                    tint = HeaderBlue,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Filtros del Reporte",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = HeaderBlue
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Tipo de SLA (obligatorio)
+            Text(
+                text = "Tipo de SLA *",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.Black,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(bottom = 16.dp)
+            ) {
+                items(listOf("SLA1", "SLA2", "Todos")) { slaType ->
+                    FilterChip(
+                        selected = selectedSlaType == slaType,
+                        onClick = { onSlaTypeChange(slaType) },
+                        label = { Text(slaType) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = AccentOrange,
+                            selectedLabelColor = Color.White,
+                            containerColor = ChipUnselected
+                        )
+                    )
+                }
+            }
+
+            Divider(modifier = Modifier.padding(vertical = 12.dp))
+
+            // Fechas
+            Text(
+                text = "Período",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.Black,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedTextField(
+                    value = startDate.ifEmpty { "" },
+                    onValueChange = {},
+                    label = { Text("Fecha Inicio", fontSize = 12.sp) },
+                    readOnly = true,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onStartDateClick() },
+                    leadingIcon = {
+                        Icon(Icons.Default.Event, contentDescription = null, tint = HeaderBlue)
+                    },
+                    placeholder = { Text("Seleccionar", fontSize = 12.sp) },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = HeaderBlue,
+                        unfocusedBorderColor = CardBorderLilac
+                    ),
+                    singleLine = true
+                )
+
+                OutlinedTextField(
+                    value = endDate.ifEmpty { "" },
+                    onValueChange = {},
+                    label = { Text("Fecha Fin", fontSize = 12.sp) },
+                    readOnly = true,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onEndDateClick() },
+                    leadingIcon = {
+                        Icon(Icons.Default.Event, contentDescription = null, tint = HeaderBlue)
+                    },
+                    placeholder = { Text("Seleccionar", fontSize = 12.sp) },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = HeaderBlue,
+                        unfocusedBorderColor = CardBorderLilac
+                    ),
+                    singleLine = true
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Bloque Tech (multi-select)
+            Text(
+                text = "Bloque Tech (Opcional)",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.Black,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(bottom = 16.dp)
+            ) {
+                items(bloqueTechOptions) { bloque ->
+                    val isSelected = selectedBloquesTech.contains(bloque)
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = {
+                            onBloquesTechChange(
+                                if (bloque == "Todos") {
+                                    if (isSelected) emptyList() else listOf("Todos")
+                                } else {
+                                    if (isSelected) {
+                                        selectedBloquesTech - bloque
+                                    } else {
+                                        (selectedBloquesTech - "Todos") + bloque
+                                    }
+                                }
+                            )
+                        },
+                        label = { Text(bloque, fontSize = 12.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = HeaderBlue,
+                            selectedLabelColor = Color.White,
+                            containerColor = ChipUnselected
+                        )
+                    )
+                }
+            }
+
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+            // Botones
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = onLimpiarFiltros) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Limpiar", fontSize = 13.sp)
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = onAplicarFiltros,
+                    colors = ButtonDefaults.buttonColors(containerColor = HeaderBlue)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FilterAlt,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Aplicar Filtros", fontSize = 13.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun KPIsGrid(
+    cumplimiento: Int,
+    totalSolicitudes: Int,
+    tiempoPromedio: Int,
+    enAlerta: Int,
+    porcentajeIncumplidas: Int,
+    startDate: String,
+    endDate: String
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Fila 1
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            KpiCard(
+                title = "Cumplimiento",
+                value = "$cumplimiento%",
+                subtitle = "",
+                modifier = Modifier.weight(1f),
+                valueColor = when {
+                    cumplimiento >= 80 -> Color(0xFF4CAF50)
+                    cumplimiento >= 70 -> Color(0xFFFFA726)
+                    else -> Color(0xFFEF5350)
+                }
+            )
+            KpiCard(
+                title = "Total Solicitudes",
+                value = "$totalSolicitudes",
+                subtitle = "Procesadas",
+                modifier = Modifier.weight(1f),
+                valueColor = HeaderBlue
+            )
+        }
+
+        // Fila 2
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            KpiCard(
+                title = "Tiempo Promedio",
+                value = "$tiempoPromedio",
+                subtitle = "días (de 30)",
+                modifier = Modifier.weight(1f),
+                valueColor = Color(0xFF29B6F6)
+            )
+            KpiCard(
+                title = "En Alerta",
+                value = "$enAlerta",
+                subtitle = "Riesgo (70-79%)",
+                modifier = Modifier.weight(1f),
+                valueColor = Color(0xFFFFA726)
+            )
+        }
+
+        // Fila 3
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            KpiCard(
+                title = "% Incumplidas",
+                value = "$porcentajeIncumplidas%",
+                subtitle = "${(totalSolicitudes * porcentajeIncumplidas / 100)} solicitudes",
+                modifier = Modifier.weight(1f),
+                valueColor = Color(0xFFEF5350)
+            )
+            KpiCard(
+                title = "Período",
+                value = startDate,
+                subtitle = "↓\n$endDate",
+                modifier = Modifier.weight(1f),
+                valueColor = HeaderBlue,
+                valueSize = 14.sp
+            )
+        }
+    }
+}
 
 @Composable
 private fun KpiCard(
     title: String,
     value: String,
-    modifier: Modifier = Modifier
+    subtitle: String,
+    modifier: Modifier = Modifier,
+    valueColor: Color = HeaderBlue,
+    valueSize: androidx.compose.ui.unit.TextUnit = 24.sp
 ) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = KpiBackground
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = title,
-                fontSize = 14.sp,
-                color = TextSoft
-            )
-            Text(
-                text = value,
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
-
-// ----------------------------------------------------
-// CHART CARDS (mock)
-// ----------------------------------------------------
-
-@Composable
-private fun ChartCard(
-    title: String,
-    subtitle: String
-) {
-    Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = LightLilac
-        ),
-        border = CardDefaults.outlinedCardBorder().copy(width = 0.dp)
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = KpiBackground),
+        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorderLilac)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
-                .heightIn(min = 160.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(title, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-            Spacer(Modifier.height(8.dp))
             Text(
-                subtitle,
-                fontSize = 13.sp,
-                color = TextSoft
+                text = title,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextSoft,
+                textAlign = TextAlign.Center
             )
-            Spacer(Modifier.height(16.dp))
-            // Área del gráfico mock
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = value,
+                fontSize = valueSize,
+                fontWeight = FontWeight.Bold,
+                color = valueColor,
+                textAlign = TextAlign.Center
+            )
+            if (subtitle.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = subtitle,
+                    fontSize = 10.sp,
+                    color = TextSoft,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetallePorRolCard(
+    selectedSlaType: String,
+    detalles: List<BloqueTechDetail>
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.TableChart,
+                    contentDescription = null,
+                    tint = HeaderBlue,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Detalle por Rol - $selectedSlaType",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = HeaderBlue
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Encabezados
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(LightLilac, RoundedCornerShape(8.dp))
+                    .padding(vertical = 8.dp, horizontal = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("BLOQUE TECH", fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f))
+                Text("SOL.", fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(0.7f))
+                Text("SLA", fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(0.7f))
+                Text("T. PROM.", fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(0.9f))
+                Text("IND.", fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(0.5f))
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Filas de datos
+            detalles.forEach { detalle ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp, horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(detalle.bloqueTech, fontSize = 12.sp, modifier = Modifier.weight(1.2f))
+                    Text("${detalle.solicitudes}", fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(0.7f))
+                    Text(
+                        text = "${detalle.slaPercentage}%",
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .weight(0.7f)
+                            .background(Color(0xFFE0E0E0), RoundedCornerShape(8.dp))
+                            .padding(vertical = 4.dp)
+                    )
+                    Text(
+                        text = "${detalle.tiempoPromedio} días",
+                        fontSize = 11.sp,
+                        textAlign = TextAlign.Center,
+                        color = Color.White,
+                        modifier = Modifier
+                            .weight(0.9f)
+                            .background(Color(0xFF29B6F6), RoundedCornerShape(8.dp))
+                            .padding(vertical = 4.dp)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .weight(0.5f)
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (detalle.cumple) Color(0xFF4CAF50) else Color(0xFFEF5350)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {}
+                }
+                if (detalle != detalles.last()) {
+                    Divider(color = Color(0xFFEEEEEE), thickness = 1.dp)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Leyenda
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = "Leyenda de Indicador",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        LegendItem(color = Color(0xFF4CAF50), label = "Cumple (≥80%)")
+                        LegendItem(color = Color(0xFFFFA726), label = "Alerta (70-79%)")
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        LegendItem(color = Color(0xFFEF5350), label = "Incumple (<70%)")
+                        LegendItem(color = Color(0xFF9E9E9E), label = "Sin dato")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LegendItem(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(text = label, fontSize = 10.sp, color = TextSoft)
+    }
+}
+
+@Composable
+private fun AnalisisIncumplimientosCard(
+    selectedSlaType: String,
+    totalIncumplimientos: Int,
+    retrasoPromedio: Int,
+    retrasoMaximo: Int,
+    totalSolicitudes: Int,
+    diasUmbral: Int,
+    incumplimientosPorBloque: List<IncumplimientoDetalle>
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = androidx.compose.foundation.BorderStroke(2.dp, AlertBorder)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Header naranja de alerta
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(80.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color.White),
-                contentAlignment = Alignment.Center
+                    .background(AlertBackground, RoundedCornerShape(8.dp))
+                    .padding(12.dp)
             ) {
-                Text(
-                    text = "Gráfico mock aquí",
-                    color = TextSoft.copy(alpha = 0.6f),
-                    fontSize = 13.sp
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = Color(0xFFE65100),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Análisis de Incumplimientos - $selectedSlaType",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFE65100)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // KPIs de incumplimientos
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                IncumplimientoKpi(
+                    title = "Total Incumplimientos",
+                    value = "$totalIncumplimientos",
+                    subtitle = "de $totalSolicitudes solicitudes",
+                    modifier = Modifier.weight(1f)
                 )
             }
-        }
-    }
-}
 
-// ----------------------------------------------------
-// RESUMEN EJECUTIVO
-// ----------------------------------------------------
-
-@Composable
-private fun ExecutiveSummaryCard(
-    total: Int,
-    cumplimiento: Int,
-    promedio: Int
-) {
-    Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFFFF7ED)
-        ),
-        border = CardDefaults.outlinedCardBorder().copy(width = 0.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "Resumen Ejecutivo",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
-            Text(
-                text = "• Total de solicitudes procesadas: $total",
-                fontSize = 14.sp
-            )
-            Text(
-                text = "• Tasa global de cumplimiento: $cumplimiento%",
-                fontSize = 14.sp
-            )
-            Text(
-                text = "• Tiempo promedio de contratación: $promedio días",
-                fontSize = 14.sp
-            )
-            Text(
-                text = "• Se requiere mejorar los tiempos de contratación",
-                fontSize = 14.sp
-            )
-        }
-    }
-}
-
-// ----------------------------------------------------
-// TARJETA GENERAR REPORTE
-// ----------------------------------------------------
-
-@Composable
-private fun GenerateReportCard(
-    registros: Int,
-    cumplimiento: Int,
-    onClick: () -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
-        border = BorderStroke(1.dp, CardBorderLilac)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "Generar Reporte SLA",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
-            Text(
-                text = "Exportar o compartir análisis de cumplimiento",
-                fontSize = 13.sp,
-                color = TextSoft
-            )
+            Spacer(modifier = Modifier.height(12.dp))
 
             Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Registros filtrados",
-                        fontSize = 13.sp,
-                        color = TextSoft
-                    )
-                    Text(
-                        registros.toString(),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Tasa cumplimiento",
-                        fontSize = 13.sp,
-                        color = TextSoft
-                    )
-                    Text(
-                        "$cumplimiento%",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                IncumplimientoKpi(
+                    title = "Retraso Promedio",
+                    value = "$retrasoPromedio días",
+                    subtitle = "sobre umbral de $diasUmbral días",
+                    modifier = Modifier.weight(1f)
+                )
+                IncumplimientoKpi(
+                    title = "Retraso Máximo",
+                    value = "$retrasoMaximo días",
+                    subtitle = "caso más crítico",
+                    modifier = Modifier.weight(1f)
+                )
             }
 
-            Button(
-                onClick = onClick,
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Tabla de incumplimientos por bloque
+            Text(
+                text = "Incumplimientos por Bloque Tech",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            // Encabezados
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = AccentOrange
-                ),
-                shape = RoundedCornerShape(24.dp)
+                    .background(LightLilac, RoundedCornerShape(8.dp))
+                    .padding(vertical = 8.dp, horizontal = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    text = "Generar reporte",
-                    fontWeight = FontWeight.SemiBold
-                )
+                Text("BLOQUE", fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.3f))
+                Text("INCUMP.", fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(0.9f))
+                Text("% TOTAL", fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(0.8f))
+                Text("RET. PROM.", fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Filas
+            incumplimientosPorBloque.forEach { item ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp, horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(item.bloqueTech, fontSize = 12.sp, modifier = Modifier.weight(1.3f))
+                    Text("${item.incumplimientos}", fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(0.9f))
+                    Text(
+                        text = "${item.porcentajeDelTotal}%",
+                        fontSize = 11.sp,
+                        textAlign = TextAlign.Center,
+                        color = Color.White,
+                        modifier = Modifier
+                            .weight(0.8f)
+                            .background(Color(0xFFEF5350), RoundedCornerShape(8.dp))
+                            .padding(vertical = 4.dp)
+                    )
+                    Text("${item.retrasoPromedio} días", fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+                }
+                if (item != incumplimientosPorBloque.last()) {
+                    Divider(color = Color(0xFFEEEEEE), thickness = 1.dp)
+                }
             }
         }
     }
 }
 
-// ----------------------------------------------------
-// PREVIEW
-// ----------------------------------------------------
+@Composable
+private fun IncumplimientoKpi(
+    title: String,
+    value: String,
+    subtitle: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8F0)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFE0B2))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = title,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF5D4037),
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = value,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFE65100),
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = subtitle,
+                fontSize = 10.sp,
+                color = Color(0xFF795548),
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
 
-@Preview(showBackground = true, showSystemUi = true)
+@Composable
+private fun ConfiguracionReporteCard(
+    reportName: String,
+    onReportNameChange: (String) -> Unit,
+    sugerencia: String
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = null,
+                    tint = HeaderBlue,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Configuración del Reporte",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = HeaderBlue
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = reportName,
+                onValueChange = onReportNameChange,
+                label = { Text("Título del Reporte") },
+                placeholder = { Text(sugerencia, fontSize = 12.sp) },
+                leadingIcon = {
+                    Icon(Icons.Default.Description, contentDescription = null, tint = HeaderBlue)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = HeaderBlue,
+                    unfocusedBorderColor = CardBorderLilac
+                ),
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Sugerencia: $sugerencia",
+                fontSize = 11.sp,
+                color = TextSoft,
+                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+            )
+        }
+    }
+}
+
+@Composable
+private fun BotonesAccionCard(
+    onGenerarPdf: () -> Unit,
+    onHistorial: () -> Unit,
+    enabled: Boolean
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Button(
+            onClick = onGenerarPdf,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = enabled,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = AccentOrange,
+                disabledContainerColor = Color(0xFFBDBDBD)
+            ),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.PictureAsPdf,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Generar Reporte PDF",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        OutlinedButton(
+            onClick = onHistorial,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = HeaderBlue
+            ),
+            border = androidx.compose.foundation.BorderStroke(1.5.dp, HeaderBlue),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.History,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Historial",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+// ============================================
+// PREVIEW
+// ============================================
+
+@Preview(showBackground = true)
 @Composable
 fun StatisticsScreenPreview() {
     SLATrackerAPPTheme {

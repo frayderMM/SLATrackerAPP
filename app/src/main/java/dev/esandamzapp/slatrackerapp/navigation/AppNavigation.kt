@@ -7,8 +7,8 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
-import com.example.app.ui.home.HomeScreen
-import com.example.app.ui.statistics.StatisticsScreen
+import dev.esandamzapp.slatrackerapp.ui.home.HomeScreen
+import dev.esandamzapp.slatrackerapp.ui.statistics.StatisticsScreen
 import dev.esandamzapp.slatrackerapp.ui.auth.LoginScreen
 import dev.esandamzapp.slatrackerapp.ui.loadProcessing.ImportarDatosExcelScreen
 import dev.esandamzapp.slatrackerapp.ui.notifications.NotificationsScreen
