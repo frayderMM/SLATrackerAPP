@@ -1,4 +1,4 @@
-package com.example.app.ui.home
+package dev.esandamzapp.slatrackerapp.ui.home
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -244,30 +244,6 @@ fun StatusBox(
             Text(
                 value,
                 fontWeight = FontWeight.Bold,
-                fontSize = 28.sp,
-                color = Color.Black
-            )
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("de $total total")
-                Spacer(Modifier.width(6.dp))
-                Icon(icon, null, tint = color)
-            }
-        }
-    }
-}
-
-@Composable
-fun PredictionCard() {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFEFF4FF)),
-        modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)
-    ) {
-
-        Column(Modifier.padding(18.dp)) {
-
-            Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -377,7 +353,6 @@ fun RecommendationCard() {
         ) {
             Icon(Icons.Outlined.Info, null, tint = Color(0xFF0057FF))
             Spacer(Modifier.width(10.dp))
-
             Text(
                 "Recomendación: Atención. El cumplimiento está disminuyendo. Revisa procesos de contratación.",
                 color = Color(0xFF0A1C47)

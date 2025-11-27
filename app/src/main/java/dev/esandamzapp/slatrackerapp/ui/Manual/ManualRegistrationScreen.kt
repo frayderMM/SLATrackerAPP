@@ -1,4 +1,4 @@
-package dev.esandamzapp.slatrackerapp.ui.Manual
+package dev.esandamzapp.slatrackerapp.ui.manual
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

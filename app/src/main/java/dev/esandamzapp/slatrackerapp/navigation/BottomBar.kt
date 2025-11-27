@@ -1,10 +1,11 @@
 package dev.esandamzapp.slatrackerapp.navigation
 
-
-import androidx.compose.material3.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 
@@ -13,7 +14,7 @@ fun BottomBar(navController: NavHostController) {
     val items = listOf(
         BottomNavItem.Dashboard,
         BottomNavItem.Estadisticas,
-        BottomNavItem.Nuevo,
+        BottomNavItem.RegistroManual, // Ruta actualizada
         BottomNavItem.Perfil
     )
 
@@ -26,8 +27,13 @@ fun BottomBar(navController: NavHostController) {
                 selected = currentRoute == item.route,
                 onClick = {
                     navController.navigate(item.route) {
-                        popUpTo(navController.graph.startDestinationId) { saveState = true }
+                        // Evita que se acumulen múltiples copias de la misma pantalla
+                        popUpTo(navController.graph.startDestinationId) {
+                            saveState = true
+                        }
+                        // Lanza la pantalla como una única instancia
                         launchSingleTop = true
+                        // Restaura el estado si se vuelve a la pantalla
                         restoreState = true
                     }
                 },

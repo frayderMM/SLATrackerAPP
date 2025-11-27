@@ -1,16 +1,5 @@
 package dev.esandamzapp.slatrackerapp.ui.statistics
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-package com.example.app.ui.statistics
-
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -24,13 +13,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.esandamzapp.slatrackerapp.ui.statistics.ReportPreviewScreen
 import dev.esandamzapp.slatrackerapp.ui.theme.SLATrackerAPPTheme
-
 
 // Colores inspirados en tu Figma (azul + naranja + lilas)
 private val HeaderBlue = Color(0xFF071C4D)
@@ -142,7 +128,6 @@ fun StatisticsScreen() {
                 color = Color.Black.copy(alpha = 0.35f),
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.35f))
             ) {
                 Box(
                     modifier = Modifier
@@ -159,10 +144,6 @@ fun StatisticsScreen() {
         }
     }
 }
-
-// ----------------------------------------------------
-// HEADER
-// ----------------------------------------------------
 
 @Composable
 private fun StatisticsHeader() {
@@ -190,7 +171,6 @@ private fun StatisticsHeader() {
             )
         }
 
-        // Icono de notificaciones + badge (mock)
         Box(
             modifier = Modifier.align(Alignment.TopEnd)
         ) {
@@ -223,10 +203,6 @@ private fun StatisticsHeader() {
     }
 }
 
-// ----------------------------------------------------
-// FILTROS
-// ----------------------------------------------------
-
 @Composable
 private fun FiltersCard(
     selectedSLA: String,
@@ -251,7 +227,6 @@ private fun FiltersCard(
                 fontSize = 16.sp
             )
 
-            // Tipo SLA
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Tipo SLA", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 Row(
@@ -275,7 +250,6 @@ private fun FiltersCard(
                 }
             }
 
-            // Rol / Área
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Rol / Área", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 FilterChip(
@@ -311,10 +285,6 @@ private fun FilterChip(
     }
 }
 
-// ----------------------------------------------------
-// KPIs
-// ----------------------------------------------------
-
 @Composable
 private fun KpiCard(
     title: String,
@@ -346,10 +316,6 @@ private fun KpiCard(
     }
 }
 
-// ----------------------------------------------------
-// CHART CARDS (mock)
-// ----------------------------------------------------
-
 @Composable
 private fun ChartCard(
     title: String,
@@ -378,7 +344,6 @@ private fun ChartCard(
                 color = TextSoft
             )
             Spacer(Modifier.height(16.dp))
-            // Área del gráfico mock
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -396,10 +361,6 @@ private fun ChartCard(
         }
     }
 }
-
-// ----------------------------------------------------
-// RESUMEN EJECUTIVO
-// ----------------------------------------------------
 
 @Composable
 private fun ExecutiveSummaryCard(
@@ -442,10 +403,6 @@ private fun ExecutiveSummaryCard(
         }
     }
 }
-
-// ----------------------------------------------------
-// TARJETA GENERAR REPORTE
-// ----------------------------------------------------
 
 @Composable
 private fun GenerateReportCard(
@@ -523,10 +480,6 @@ private fun GenerateReportCard(
         }
     }
 }
-
-// ----------------------------------------------------
-// PREVIEW
-// ----------------------------------------------------
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable

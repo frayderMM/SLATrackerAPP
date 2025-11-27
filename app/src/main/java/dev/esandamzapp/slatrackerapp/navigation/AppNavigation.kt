@@ -9,19 +9,20 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.app.ui.home.HomeScreen
-import com.example.app.ui.statistics.StatisticsScreen
 import dev.esandamzapp.slatrackerapp.ui.auth.LoginScreen
+import dev.esandamzapp.slatrackerapp.ui.home.HomeScreen
 import dev.esandamzapp.slatrackerapp.ui.loadProcessing.ImportarDatosExcelScreen
+import dev.esandamzapp.slatrackerapp.ui.manual.ManualRegistrationScreen
 import dev.esandamzapp.slatrackerapp.ui.notifications.NotificationsScreen
 import dev.esandamzapp.slatrackerapp.ui.options.LinksOfInterestScreen
 import dev.esandamzapp.slatrackerapp.ui.options.ReportProblemScreen
 import dev.esandamzapp.slatrackerapp.ui.options.SecurityScreen
 import dev.esandamzapp.slatrackerapp.ui.options.SupportScreen
+import dev.esandamzapp.slatrackerapp.ui.prediction.PredictionScreen
 import dev.esandamzapp.slatrackerapp.ui.profile.ProfileScreen
 import dev.esandamzapp.slatrackerapp.ui.reports.ReportsScreen
 import dev.esandamzapp.slatrackerapp.ui.settings.SettingsScreen
-import dev.esandamzapp.slatrackerapp.ui.sla.NewRequestScreen
+import dev.esandamzapp.slatrackerapp.ui.statistics.StatisticsScreen
 
 @Composable
 fun AppNavigation() {
@@ -48,7 +49,7 @@ fun AppNavigation() {
             composable("login") {
                 LoginScreen(
                     onLoginSuccess = {
-                        navController.navigate("home") {
+                        navController.navigate("home") { // o a la pantalla principal que prefieras
                             popUpTo("login") { inclusive = true }
                         }
                     }
@@ -56,7 +57,9 @@ fun AppNavigation() {
             }
 
             composable("home") { HomeScreen(navController) }
-
+            composable("statistics") { StatisticsScreen() }
+            composable("manual_registration") { ManualRegistrationScreen() }
+            composable("prediction") { PredictionScreen() }
             composable("profile") {
                 ProfileScreen(
                     onNotifications = { navController.navigate("notifications") },
@@ -74,8 +77,7 @@ fun AppNavigation() {
                 )
             }
 
-            composable("statistics") { StatisticsScreen() }
-            composable("newRequest") { NewRequestScreen() }
+            // Rutas adicionales
             composable("notifications") { NotificationsScreen(navController) }
             composable("reports") { ReportsScreen(navController) }
             composable("links") { LinksOfInterestScreen(navController) }
