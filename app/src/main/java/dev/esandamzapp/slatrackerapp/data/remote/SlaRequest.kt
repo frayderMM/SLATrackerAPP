@@ -1,8 +1,5 @@
 package dev.esandamzapp.slatrackerapp.data.remote
 
-import kotlinx.serialization.Serializable
-
-@Serializable
 data class SlaRequest(
     val idPersonal: Int,
     val idRolRegistro: Int,

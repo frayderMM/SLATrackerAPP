@@ -43,4 +43,10 @@ interface ApiService {
         @Query("userId") userId: Int
     ): Response<Unit> // Usamos Response<Unit> para manejar respuestas sin cuerpo (204 No Content)
 
+    // ===============================
+    // == Endpoints de SLA
+    // ===============================
+    @POST("api/solicitud")
+    suspend fun createSla(@Body request: dev.esandamzapp.slatrackerapp.data.remote.SlaRequest): Response<Unit>
+
 }
