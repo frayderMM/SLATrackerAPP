@@ -14,7 +14,8 @@ fun BottomBar(navController: NavHostController) {
         BottomNavItem.Dashboard,
         BottomNavItem.Estadisticas,
         BottomNavItem.Nuevo,
-        BottomNavItem.Perfil
+        BottomNavItem.Perfil,
+        BottomNavItem.Configuracion
     )
 
     NavigationBar {
@@ -31,8 +32,7 @@ fun BottomBar(navController: NavHostController) {
                         restoreState = true
                     }
                 },
-                icon = { Icon(item.icon, contentDescription = item.label) },
-                label = { Text(item.label) }
+                icon = { Icon(item.icon, contentDescription = item.label) } // Se ha eliminado el label
             )
         }
     }
