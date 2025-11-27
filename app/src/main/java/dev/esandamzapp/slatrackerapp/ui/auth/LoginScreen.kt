@@ -19,12 +19,16 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.esandamzapp.slatrackerapp.R
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit   // SE USA PARA NAVEGAR
+    onLoginSuccess: (String, Int) -> Unit
 ) {
+    val viewModel: LoginViewModel = viewModel()
+    val loginState by viewModel.loginState.collectAsState()
+
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -33,22 +37,23 @@ fun LoginScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(24.dp),
-        verticalArrangement = Arrangement.SpaceBetween,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+
         Spacer(modifier = Modifier.height(70.dp))
 
+        // ⭐ TU LOGO ORIGINAL
         Image(
             painter = painterResource(id = R.drawable.logotata),
-            contentDescription = "TCS Logo",
+            contentDescription = null,
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(300f / 121f)
-                .padding(horizontal = 1.dp)
         )
 
         Spacer(modifier = Modifier.height(70.dp))
 
+        // ⭐ TU TARJETA DE LOGIN ORIGINAL
         Column(
             modifier = Modifier
                 .width(350.dp)
@@ -60,83 +65,77 @@ fun LoginScreen(
                 value = username,
                 onValueChange = { username = it },
                 label = {
-                    Text("user", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text("Usuario", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 },
                 textStyle = TextStyle(fontSize = 20.sp),
-                modifier = Modifier
-                    .width(320.dp)
-                    .heightIn(min = 56.dp)
-                    .padding(vertical = 8.dp),
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF007DC4),
-                    unfocusedBorderColor = Color(0x668BC9E6),
-                    cursorColor = Color(0xFF007DC4)
-                ),
-                shape = RoundedCornerShape(10.dp)
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
             )
 
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
                 label = {
-                    Text("Password", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text("Contraseña", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 },
-                textStyle = TextStyle(fontSize = 18.sp),
+                textStyle = TextStyle(fontSize = 20.sp),
                 visualTransformation =
                     if (passwordVisible) VisualTransformation.None
                     else PasswordVisualTransformation(),
                 trailingIcon = {
-                    val icon =
-                        if (passwordVisible) Icons.Filled.Visibility
-                        else Icons.Filled.VisibilityOff
-
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(icon, contentDescription = null)
+                        Icon(
+                            if (passwordVisible) Icons.Filled.Visibility
+                            else Icons.Filled.VisibilityOff,
+                            contentDescription = null
+                        )
                     }
                 },
-                modifier = Modifier
-                    .width(320.dp)
-                    .heightIn(min = 56.dp)
-                    .padding(vertical = 8.dp),
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF007DC4),
-                    unfocusedBorderColor = Color(0x668BC9E6),
-                    cursorColor = Color(0xFF007DC4)
-                ),
-                shape = RoundedCornerShape(10.dp)
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
             )
         }
 
         Spacer(modifier = Modifier.height(30.dp))
 
+        // ⭐ TU BOTÓN ORIGINAL
         Button(
-            onClick = { onLoginSuccess() },  // 👈 NAVEGA AL HOME
-            modifier = Modifier
-                .width(350.dp)
-                .padding(vertical = 24.dp),
+            onClick = { viewModel.login(username, password) },
+            modifier = Modifier.width(350.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFF3280C4)
             ),
             shape = RoundedCornerShape(10.dp)
         ) {
             Text(
-                "INICIAR SESION",
+                "INICIAR SESIÓN",
                 fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
+                fontWeight = FontWeight.Bold
             )
         }
 
-        Spacer(modifier = Modifier.weight(1f))
+        // ⭐ ESTADOS
+        when (loginState) {
 
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(bottom = 8.dp)
-        ) {
-            Text("By Alianza_TCS_ESAN", fontSize = 12.sp, fontWeight = FontWeight.Medium)
-            Text("v.0.01", fontSize = 10.sp, color = Color.Gray)
+            is LoginState.Loading ->
+                CircularProgressIndicator(modifier = Modifier.padding(top = 16.dp))
+
+            is LoginState.Error ->
+                Text(
+                    text = (loginState as LoginState.Error).message,
+                    color = Color.Red,
+                    modifier = Modifier.padding(top = 16.dp)
+                )
+
+            is LoginState.Success -> {
+                val data = loginState as LoginState.Success
+
+                LaunchedEffect(Unit) {
+                    onLoginSuccess(data.token, data.userId)
+                }
+            }
+
+            else -> {}
         }
     }
 }
