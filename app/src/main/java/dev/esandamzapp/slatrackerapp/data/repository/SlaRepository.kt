@@ -1,6 +1,5 @@
 package dev.esandamzapp.slatrackerapp.data.repository
 
-import dev.esandamzapp.slatrackerapp.data.remote.ApiClient
 import dev.esandamzapp.slatrackerapp.data.remote.SlaRequest
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.RedirectResponseException

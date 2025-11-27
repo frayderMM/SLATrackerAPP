@@ -302,7 +302,7 @@ fun SlaScreen(
                             numDiasSla = numDiasSla,
                             resumenSla = role,
                             origenDato = "android",
-                            creadoPor = 3 // <-- CORREGIDO: ahora coincide con el ID del token.
+                            creadoPor = 3
                         )
                         viewModel.createSla(request)
                     }

@@ -1,6 +1,5 @@
 package dev.esandamzapp.slatrackerapp.data.repository
 
-import dev.esandamzapp.slatrackerapp.data.remote.ApiClient
 import dev.esandamzapp.slatrackerapp.data.remote.dto.AlertDto
 import dev.esandamzapp.slatrackerapp.data.remote.dto.UnreadCountResponse
 import io.ktor.client.call.body
