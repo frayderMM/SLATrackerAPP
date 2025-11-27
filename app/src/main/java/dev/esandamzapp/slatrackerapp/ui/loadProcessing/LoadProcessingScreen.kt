@@ -1,9 +1,5 @@
 package dev.esandamzapp.slatrackerapp.ui.loadProcessing
 
-// ----------------------------
-// IMPORTS NECESARIOS
-
-// ----------------------------
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,16 +15,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.Image
 
-// ----------------------------
-// UI PRINCIPAL
-// ----------------------------
 @Composable
-fun ImportarDatosExcelScreen(
+fun LoadProcessingScreen(
+    onBack: () -> Unit = {},
     onDescargarPlantilla: () -> Unit = {},
     onSeleccionarArchivo: () -> Unit = {},
-    onCancelar: () -> Unit = {},
     onImportar: () -> Unit = {},
     registrosCount: Int = 0
 ) {
@@ -48,9 +40,6 @@ fun ImportarDatosExcelScreen(
                 verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
 
-                // ----------------------------
-                // TÍTULO
-                // ----------------------------
                 Text(
                     "Importar Datos desde Excel",
                     fontSize = 20.sp,
@@ -64,9 +53,6 @@ fun ImportarDatosExcelScreen(
                     color = Color.Gray
                 )
 
-                // ----------------------------
-                // TARJETA DE PLANTILLA
-                // ----------------------------
                 Card(
                     colors = CardDefaults.cardColors(
                         containerColor = Color(0xFFFFF3E6)
@@ -112,9 +98,6 @@ fun ImportarDatosExcelScreen(
                     }
                 }
 
-                // ----------------------------
-                // CUADRO PARA SUBIR ARCHIVO
-                // ----------------------------
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -146,15 +129,12 @@ fun ImportarDatosExcelScreen(
                     }
                 }
 
-                // ----------------------------
-                // BOTONES INFERIORES
-                // ----------------------------
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
 
-                    OutlinedButton(onClick = onCancelar) {
+                    OutlinedButton(onClick = onBack) {
                         Text("Cancelar")
                     }
 
@@ -170,13 +150,10 @@ fun ImportarDatosExcelScreen(
     }
 }
 
-// ----------------------------
-// PREVIEW
-// ----------------------------
 @Preview(showBackground = true)
 @Composable
 fun PreviewImportarDatosExcel() {
     MaterialTheme {
-        ImportarDatosExcelScreen(registrosCount = 0)
+        LoadProcessingScreen(registrosCount = 0)
     }
 }

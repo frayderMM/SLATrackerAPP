@@ -24,7 +24,7 @@ import dev.esandamzapp.slatrackerapp.R
 
 
 @Composable
-fun LoginScreen() {
+fun LoginScreen(onLoginSuccess: () -> Unit) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -129,7 +129,7 @@ fun LoginScreen() {
 
         // Login Button
         Button(
-            onClick = { /* TODO */ },
+            onClick = { onLoginSuccess() },
             modifier = Modifier
                 .width(350.dp)
                 .padding(vertical = 24.dp),

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Person
@@ -111,8 +112,8 @@ fun DateField(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NewRequestScreen(
-    onClose: () -> Unit = {},
+fun SlaScreen(
+    onBack: () -> Unit = {},
     viewModel: SlaViewModel = viewModel()
 ) {
     var role by remember { mutableStateOf("") }
@@ -141,7 +142,7 @@ fun NewRequestScreen(
     HandleUiState(uiState = uiState, onDismiss = {
         viewModel.resetState()
         if (uiState is SlaUiState.Success) {
-            onClose()
+            onBack()
         }
     })
 
@@ -170,8 +171,8 @@ fun NewRequestScreen(
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
-                IconButton(onClick = onClose) {
-                    Icon(Icons.Default.Close, contentDescription = "Cerrar")
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
             }
 
@@ -316,7 +317,7 @@ fun NewRequestScreen(
             }
 
             OutlinedButton(
-                onClick = onClose,
+                onClick = onBack,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
