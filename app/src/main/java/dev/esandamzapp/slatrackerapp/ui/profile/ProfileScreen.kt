@@ -4,6 +4,8 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -19,11 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.esandamzapp.slatrackerapp.R
 
-// ===============================================================
-// ⭐ PROFILE SCREEN COMPLETO (ESTILO iOS / PREMIUM MOCKUP)
-// ===============================================================
 @Composable
-fun ProfileScreen() {
+fun ProfileScreen(onBack: () -> Unit) {
 
     Column(
         modifier = Modifier
@@ -32,7 +31,17 @@ fun ProfileScreen() {
             .verticalScroll(rememberScrollState())
     ) {
 
-        Spacer(modifier = Modifier.height(30.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 16.dp, start = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+            Text("Profile", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
 
         // FOTO + INFO
         Column(
@@ -81,9 +90,7 @@ fun ProfileScreen() {
             Spacer(modifier = Modifier.height(28.dp))
         }
 
-        // ======================================================
         // CARD INFO PERSONAL
-        // ======================================================
         Card(
             modifier = Modifier
                 .padding(horizontal = 20.dp)
@@ -116,9 +123,7 @@ fun ProfileScreen() {
 
         Spacer(modifier = Modifier.height(26.dp))
 
-        // ======================================================
         // CARD DEL MENÚ
-        // ======================================================
         Card(
             modifier = Modifier
                 .padding(horizontal = 20.dp)
@@ -142,9 +147,7 @@ fun ProfileScreen() {
 
         Spacer(modifier = Modifier.height(26.dp))
 
-        // ======================================================
         // LOGOUT CLEAN — ESTILO iOS
-        // ======================================================
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -174,9 +177,6 @@ fun ProfileScreen() {
     }
 }
 
-// ===============================================================
-// ⭐ INFO ROW (DATOS PERSONALES)
-// ===============================================================
 @Composable
 fun InfoRow(icon: Int, label: String, value: String) {
 
@@ -212,9 +212,6 @@ fun InfoRow(icon: Int, label: String, value: String) {
     }
 }
 
-// ===============================================================
-// ⭐ MENÚ (ITEMS)
-// ===============================================================
 @Composable
 fun MenuItemCard(icon: Int, title: String) {
 
