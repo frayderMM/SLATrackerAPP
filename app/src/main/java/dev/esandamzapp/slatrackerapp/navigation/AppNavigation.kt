@@ -9,85 +9,55 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import dev.esandamzapp.slatrackerapp.ui.home.HomeScreen
-import com.example.app.ui.statistics.StatisticsScreen
 import dev.esandamzapp.slatrackerapp.ui.auth.LoginScreen
 import dev.esandamzapp.slatrackerapp.ui.configuration.ConfigurationScreen
-import dev.esandamzapp.slatrackerapp.ui.loadProcessing.ImportarDatosExcelScreen
-import dev.esandamzapp.slatrackerapp.ui.notifications.NotificationsScreen
-import dev.esandamzapp.slatrackerapp.ui.options.LinksOfInterestScreen
-import dev.esandamzapp.slatrackerapp.ui.options.ReportProblemScreen
-import dev.esandamzapp.slatrackerapp.ui.options.SecurityScreen
-import dev.esandamzapp.slatrackerapp.ui.options.SupportScreen
-import dev.esandamzapp.slatrackerapp.ui.profile.ProfileScreen
-import dev.esandamzapp.slatrackerapp.ui.reports.ReportsScreen
-import dev.esandamzapp.slatrackerapp.ui.settings.SettingsScreen
-import dev.esandamzapp.slatrackerapp.ui.sla.NewRequestScreen
+import dev.esandamzapp.slatrackerapp.ui.home.HomeScreen
 
 @Composable
 fun AppNavigation() {
 
     val navController = rememberNavController()
-
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
     Scaffold(
         bottomBar = {
+            // La BottomBar solo se muestra si la ruta actual no es "login"
             if (currentRoute != "login") {
-                BottomBar(navController)
+                BottomBar(navController = navController)
             }
         }
     ) { innerPadding ->
-
         NavHost(
             navController = navController,
             startDestination = "login",
             modifier = Modifier.padding(innerPadding)
         ) {
 
+            // Pantalla de Login
             composable("login") {
-                LoginScreen(
-                    onLoginSuccess = {
-                        navController.navigate("home") {
-                            popUpTo("login") { inclusive = true }
-                        }
+                // Usamos una lambda para navegar al home en caso de éxito
+                LoginScreen(onLoginSuccess = {
+                    navController.navigate("home") {
+                        // Limpia el backstack para que el usuario no pueda volver al login
+                        popUpTo("login") { inclusive = true }
                     }
-                )
+                })
             }
 
-            composable("home") { HomeScreen(navController) }
-
-            composable("profile") {
-                ProfileScreen(
-                    onNotifications = { navController.navigate("notifications") },
-                    onReports = { navController.navigate("reports") },
-                    onLinks = { navController.navigate("links") },
-                    onSettings = { navController.navigate("settings") },
-                    onSecurity = { navController.navigate("security") },
-                    onHelpCenter = { navController.navigate("helpCenter") },
-                    onReportProblem = { navController.navigate("reportProblem") },
-                    onLogout = {
-                        navController.navigate("login") {
-                            popUpTo("home") { inclusive = true }
-                        }
-                    }
-                )
+            // Pantalla Principal (Dashboard)
+            composable("home") {
+                HomeScreen(navController = navController)
             }
 
-            composable("statistics") { StatisticsScreen() }
-            composable("newRequest") { NewRequestScreen() }
-            composable("notifications") { NotificationsScreen(navController) }
-            composable("reports") { ReportsScreen(navController) }
-            composable("links") { LinksOfInterestScreen(navController) }
-            composable("settings") { SettingsScreen(navController) }
-            composable("security") { SecurityScreen(navController) }
-            composable("helpCenter") { SupportScreen(navController) }
-            composable("reportProblem") { ReportProblemScreen(navController) }
-            composable("loadProcessing") {
-                ImportarDatosExcelScreen(navController)
+            // Pantalla de Configuración
+            composable("configuration") {
+                ConfigurationScreen(navController = navController)
             }
-            composable("configuration") { ConfigurationScreen(navController) }
+
+            // Aquí puedes añadir otras pantallas que están en tu BottomBar, como "statistics" o "profile"
+            // composable("statistics") { StatisticsScreen() }
+            // composable("profile") { ProfileScreen(navController) }
         }
     }
 }
