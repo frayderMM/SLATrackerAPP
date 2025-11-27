@@ -10,6 +10,15 @@ class AuthInterceptor : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
+        val urlPath = originalRequest.url.encodedPath
+        
+        // ¡LÓGICA CLAVE! Si la petición es para el login, no añadas el token.
+        // El login no requiere autenticación porque es el proceso que obtiene el token.
+        if (urlPath.contains("auth/login") || urlPath.endsWith("auth/login")) {
+            return chain.proceed(originalRequest)
+        }
+        
+        // Para todas las demás peticiones, añade el token de autorización
         val requestBuilder = originalRequest.newBuilder()
             .header("Authorization", "Bearer $hardcodedToken")
         val newRequest = requestBuilder.build()

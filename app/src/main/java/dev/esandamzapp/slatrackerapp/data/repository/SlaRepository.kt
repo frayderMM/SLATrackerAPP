@@ -11,7 +11,7 @@ class SlaRepository {
     suspend fun createSla(request: SlaRequest): Result<Unit> {
         return try {
             val response = apiService.createSla(request)
-            
+
             if (response.isSuccessful) {
                 Result.success(Unit)
             } else {
