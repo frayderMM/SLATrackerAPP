@@ -113,7 +113,16 @@ fun AppNavigation() {
             // ===============================
             // OTRAS PANTALLAS
             // ===============================
-            composable("statistics") { StatisticsScreen() }
+            composable("statistics") { 
+                StatisticsScreen(
+                    onHistoryClick = { navController.navigate("pdfHistory") }
+                )
+            }
+            composable("pdfHistory") { 
+                dev.esandamzapp.slatrackerapp.ui.statistics.PdfHistoryScreen(
+                    onBackClick = { navController.navigateUp() }
+                )
+            }
             composable("newRequest") { NewRequestScreen() }
             composable("notifications") { NotificationsScreen(navController) }
             composable("reports") { ReportsScreen(navController) }

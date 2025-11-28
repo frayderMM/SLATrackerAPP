@@ -11,11 +11,10 @@ interface ApiService {
         @Body request: LoginRequest
     ): LoginResponse
 
-    @GET("/api/Usuarios/{id}/perfil-completo")
-    suspend fun getPerfilCompleto(
-        @Path("id") idUsuario: Int,
-        @Header("Authorization") token: String
-    ): Response<PerfilCompletoResponse>
+    @GET("/api/Usuarios/{id}")
+    suspend fun getUsuario(
+        @Path("id") idUsuario: Int
+    ): Response<UsuarioDto>
 
     // Dashboard Endpoints
     @GET("/api/Dashboard/sla/data")
@@ -24,11 +23,14 @@ interface ApiService {
         @Query("startDate") startDate: String? = null,
         @Query("endDate") endDate: String? = null,
         @Query("bloqueTech") bloqueTech: String? = null
-    ): Response<List<DashboardSlaDto>>
+    ): Response<DashboardDataResponse>
 
     @GET("/api/Dashboard/sla/statistics")
-    suspend fun getDashboardStatistics(): Response<DashboardStatsDto>
+    suspend fun getDashboardStatistics(): Response<DashboardStatsResponse>
 
     @GET("/api/ConfigSla")
     suspend fun getConfigSla(): Response<List<ConfigSla>>
+
+    @GET("/api/RolRegistro")
+    suspend fun getRolesRegistro(): Response<List<RolRegistroDto>>
 }

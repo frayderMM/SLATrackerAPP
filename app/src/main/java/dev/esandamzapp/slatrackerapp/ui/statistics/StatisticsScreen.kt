@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package dev.esandamzapp.slatrackerapp.ui.statistics
 
 import androidx.compose.foundation.background
@@ -59,12 +61,11 @@ fun StatisticsScreen(
     onGeneratePdfClick: () -> Unit = {},
     viewModel: StatisticsViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     
     var showDatePickerDialog by remember { mutableStateOf(false) }
     var datePickerMode by remember { mutableStateOf("start") } // "start" o "end"
-
-    val bloqueTechOptions = listOf("Todos", "Backend", "Frontend", "QA", "DevOps", "Infraestructura")
 
     Box(
         modifier = Modifier
@@ -75,17 +76,21 @@ fun StatisticsScreen(
             // Header
             StatisticsHeader(onHistoryClick = onHistoryClick)
 
-            // Loading o Error
+            // Loading inicial o Error
             when {
-                uiState.isLoading -> {
+                uiState.isLoadingInitialData -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = AccentOrange)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(color = AccentOrange)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("Cargando configuración...", color = TextSoft)
+                        }
                     }
                 }
-                uiState.error != null -> {
+                uiState.error != null && !uiState.isLoading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -122,81 +127,133 @@ fun StatisticsScreen(
                                     datePickerMode = "start"
                                     showDatePickerDialog = true
                                 },
+                                onStartDateChange = { viewModel.updateStartDate(it) },
                                 endDate = uiState.endDate,
                                 onEndDateClick = {
                                     datePickerMode = "end"
                                     showDatePickerDialog = true
                                 },
+                                onEndDateChange = { viewModel.updateEndDate(it) },
                                 selectedBloquesTech = uiState.selectedBloquesTech,
-                                bloqueTechOptions = bloqueTechOptions,
+                                bloqueTechOptions = uiState.bloquesTechDisponibles,
                                 onBloquesTechChange = { viewModel.updateBloquesTech(it) },
                                 onLimpiarFiltros = { viewModel.clearFilters() },
-                                onAplicarFiltros = { viewModel.applyFilters() }
+                                onAplicarFiltros = { viewModel.applyFilters() },
+                                isLoading = uiState.isLoading
                             )
                         }
 
-                        // 2. KPIs
-                        item {
-                            Text(
-                                text = "KPIs - ${uiState.selectedSlaType}",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = HeaderBlue,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-                        }
-
-                        item {
-                            KPIsGrid(
-                                cumplimiento = uiState.cumplimiento,
-                                totalSolicitudes = uiState.totalSolicitudes,
-                                tiempoPromedio = uiState.tiempoPromedio,
-                                enAlerta = uiState.enAlerta,
-                                porcentajeIncumplidas = uiState.porcentajeIncumplidas,
-                                startDate = uiState.startDate.ifEmpty { "N/A" },
-                                endDate = uiState.endDate.ifEmpty { "N/A" }
-                            )
-                        }
-
-                        // 3. DETALLE POR ROL
-                        item {
-                            DetallePorRolCard(
-                                selectedSlaType = uiState.selectedSlaType,
-                                detalles = uiState.detallePorRol
-                            )
-                        }
-
-                        // 4. ANÁLISIS DE INCUMPLIMIENTOS
-                        if (uiState.totalIncumplimientos > 0) {
+                        // Mostrar contenido solo si hay datos
+                        if (uiState.dashboardData.isNotEmpty()) {
+                            // 2. KPIs
                             item {
-                                AnalisisIncumplimientosCard(
-                                    selectedSlaType = uiState.selectedSlaType,
-                                    totalIncumplimientos = uiState.totalIncumplimientos,
-                                    retrasoPromedio = uiState.retrasoPromedio,
-                                    retrasoMaximo = uiState.retrasoMaximo,
-                                    totalSolicitudes = uiState.totalSolicitudes,
-                                    diasUmbral = uiState.diasUmbral,
-                                    incumplimientosPorBloque = uiState.incumplimientosPorBloque
+                                Text(
+                                    text = "KPIs - ${uiState.appliedSlaType}",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = HeaderBlue,
+                                    modifier = Modifier.padding(bottom = 8.dp)
                                 )
                             }
-                        }
 
-                        // 5. CONFIGURACIÓN DEL REPORTE
-                        item {
-                            ConfiguracionReporteCard(
-                                reportName = uiState.reportName,
-                                onReportNameChange = { viewModel.updateReportName(it) },
-                                sugerencia = "Reporte_SLA_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}"
-                            )
-                        }
+                            item {
+                                KPIsGrid(
+                                    cumplimiento = uiState.cumplimiento,
+                                    totalSolicitudes = uiState.totalSolicitudes,
+                                    tiempoPromedio = uiState.tiempoPromedio,
+                                    enAlerta = uiState.enAlerta,
+                                    porcentajeIncumplidas = uiState.porcentajeIncumplidas,
+                                    startDate = uiState.appliedStartDate.ifEmpty { "N/A" },
+                                    endDate = uiState.appliedEndDate.ifEmpty { "N/A" }
+                                )
+                            }
 
-                        // 6. BOTONES DE ACCIÓN
-                        item {
-                            BotonesAccionCard(
-                                onGenerarPdf = onGeneratePdfClick,
-                                onHistorial = onHistoryClick,
-                                enabled = uiState.totalSolicitudes > 0
-                            )
+                            // 3. DETALLE POR ROL
+                            item {
+                                DetallePorRolCard(
+                                    selectedSlaType = uiState.appliedSlaType,
+                                    detalles = uiState.detallePorRol
+                                )
+                            }
+
+                            // 4. ANÁLISIS DE INCUMPLIMIENTOS
+                            if (uiState.totalIncumplimientos > 0) {
+                                item {
+                                    AnalisisIncumplimientosCard(
+                                        selectedSlaType = uiState.appliedSlaType,
+                                        totalIncumplimientos = uiState.totalIncumplimientos,
+                                        retrasoPromedio = uiState.retrasoPromedio,
+                                        retrasoMaximo = uiState.retrasoMaximo,
+                                        totalSolicitudes = uiState.totalSolicitudes,
+                                        diasUmbral = uiState.diasUmbral,
+                                        incumplimientosPorBloque = uiState.incumplimientosPorBloque
+                                    )
+                                }
+                            }
+
+                            // 5. CONFIGURACIÓN DEL REPORTE
+                            item {
+                                ConfiguracionReporteCard(
+                                    reportName = uiState.reportName,
+                                    onReportNameChange = { viewModel.updateReportName(it) },
+                                    sugerencia = "Reporte_SLA_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}"
+                                )
+                            }
+
+                            // 6. BOTONES DE ACCIÓN
+                            item {
+                                BotonesAccionCard(
+                                    onGenerarPdf = { viewModel.generatePdf(context) },
+                                    onHistorial = onHistoryClick,
+                                    enabled = uiState.totalSolicitudes > 0
+                                )
+                            }
+                        } else if (uiState.isLoading) {
+                            // Mostrar loading cuando se están aplicando filtros
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        CircularProgressIndicator(color = AccentOrange)
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text("Cargando datos...", color = TextSoft)
+                                    }
+                                }
+                            }
+                        } else {
+                            // Mensaje inicial
+                            item {
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 32.dp),
+                                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(24.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Info,
+                                            contentDescription = null,
+                                            tint = AccentOrange,
+                                            modifier = Modifier.size(48.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            text = "Configura los filtros y presiona 'Aplicar Filtros' para generar el reporte",
+                                            textAlign = TextAlign.Center,
+                                            color = TextSoft,
+                                            fontSize = 14.sp
+                                        )
+                                    }
+                                }
+                            }
                         }
 
                         // Espaciado final
@@ -209,25 +266,47 @@ fun StatisticsScreen(
         }
     }
 
-    // DatePicker Dialog (mock - se implementará después)
+    // DatePicker Dialog con Material3
     if (showDatePickerDialog) {
-        AlertDialog(
-            onDismissRequest = { showDatePickerDialog = false },
-            title = { Text(if (datePickerMode == "start") "Seleccionar Fecha Inicio" else "Seleccionar Fecha Fin") },
-            text = { Text("Formato: yyyy-MM-dd") },
-            confirmButton = {
-                TextButton(onClick = {
-                    // Mock: asignar fecha actual
-                    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                    val currentDate = dateFormat.format(Date())
-                    if (datePickerMode == "start") {
-                        viewModel.updateStartDate(currentDate)
-                    } else {
-                        viewModel.updateEndDate(currentDate)
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = run {
+                val currentDate = if (datePickerMode == "start") uiState.startDate else uiState.endDate
+                if (currentDate.isNotEmpty()) {
+                    try {
+                        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(currentDate)?.time
+                    } catch (e: Exception) {
+                        System.currentTimeMillis()
                     }
-                    showDatePickerDialog = false
-                }) {
-                    Text("Usar Fecha Actual")
+                } else {
+                    System.currentTimeMillis()
+                }
+            },
+            // Límite máximo: fecha actual
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                    return utcTimeMillis <= System.currentTimeMillis()
+                }
+            }
+        )
+        
+        DatePickerDialog(
+            onDismissRequest = { showDatePickerDialog = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                            val selectedDate = dateFormat.format(Date(millis))
+                            if (datePickerMode == "start") {
+                                viewModel.updateStartDate(selectedDate)
+                            } else {
+                                viewModel.updateEndDate(selectedDate)
+                            }
+                        }
+                        showDatePickerDialog = false
+                    }
+                ) {
+                    Text("Aceptar")
                 }
             },
             dismissButton = {
@@ -235,7 +314,25 @@ fun StatisticsScreen(
                     Text("Cancelar")
                 }
             }
-        )
+        ) {
+            DatePicker(
+                state = datePickerState,
+                title = {
+                    Text(
+                        text = if (datePickerMode == "start") "Seleccionar Fecha Inicio" else "Seleccionar Fecha Fin",
+                        modifier = Modifier.padding(16.dp)
+                    )
+                },
+                headline = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        Text(
+                            text = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(millis)),
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -262,7 +359,7 @@ private fun StatisticsHeader(onHistoryClick: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Reportes",
+                    text = "Estadísticas",
                     color = Color.White,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
@@ -295,13 +392,16 @@ private fun FiltrosReporteCard(
     onSlaTypeChange: (String) -> Unit,
     startDate: String,
     onStartDateClick: () -> Unit,
+    onStartDateChange: (String) -> Unit,
     endDate: String,
     onEndDateClick: () -> Unit,
+    onEndDateChange: (String) -> Unit,
     selectedBloquesTech: List<String>,
     bloqueTechOptions: List<String>,
     onBloquesTechChange: (List<String>) -> Unit,
     onLimpiarFiltros: () -> Unit,
-    onAplicarFiltros: () -> Unit
+    onAplicarFiltros: () -> Unit,
+    isLoading: Boolean = false
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -330,7 +430,7 @@ private fun FiltrosReporteCard(
 
             // Tipo de SLA (obligatorio)
             Text(
-                text = "Tipo de SLA *",
+                text = "Tipo SLA *",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = Color.Black,
@@ -341,7 +441,7 @@ private fun FiltrosReporteCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(bottom = 16.dp)
             ) {
-                items(listOf("SLA1", "SLA2", "Todos")) { slaType ->
+                items(listOf("SLA1", "SLA2")) { slaType ->
                     FilterChip(
                         selected = selectedSlaType == slaType,
                         onClick = { onSlaTypeChange(slaType) },
@@ -350,7 +450,8 @@ private fun FiltrosReporteCard(
                             selectedContainerColor = AccentOrange,
                             selectedLabelColor = Color.White,
                             containerColor = ChipUnselected
-                        )
+                        ),
+                        enabled = !isLoading
                     )
                 }
             }
@@ -372,40 +473,56 @@ private fun FiltrosReporteCard(
             ) {
                 OutlinedTextField(
                     value = startDate.ifEmpty { "" },
-                    onValueChange = {},
+                    onValueChange = { newValue ->
+                        // Permitir solo números y guiones, formato yyyy-MM-dd
+                        if (newValue.isEmpty() || newValue.matches(Regex("^\\d{0,4}(-\\d{0,2}(-\\d{0,2})?)?\$"))) {
+                            onStartDateChange(newValue)
+                        }
+                    },
                     label = { Text("Fecha Inicio", fontSize = 12.sp) },
-                    readOnly = true,
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { onStartDateClick() },
+                    modifier = Modifier.weight(1f),
                     leadingIcon = {
                         Icon(Icons.Default.Event, contentDescription = null, tint = HeaderBlue)
                     },
-                    placeholder = { Text("Seleccionar", fontSize = 12.sp) },
+                    trailingIcon = {
+                        IconButton(onClick = onStartDateClick) {
+                            Icon(Icons.Default.CalendarMonth, contentDescription = "Abrir calendario", tint = HeaderBlue)
+                        }
+                    },
+                    placeholder = { Text("yyyy-MM-dd", fontSize = 12.sp) },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = HeaderBlue,
                         unfocusedBorderColor = CardBorderLilac
                     ),
-                    singleLine = true
+                    singleLine = true,
+                    enabled = !isLoading
                 )
 
                 OutlinedTextField(
                     value = endDate.ifEmpty { "" },
-                    onValueChange = {},
+                    onValueChange = { newValue ->
+                        // Permitir solo números y guiones, formato yyyy-MM-dd
+                        if (newValue.isEmpty() || newValue.matches(Regex("^\\d{0,4}(-\\d{0,2}(-\\d{0,2})?)?\$"))) {
+                            onEndDateChange(newValue)
+                        }
+                    },
                     label = { Text("Fecha Fin", fontSize = 12.sp) },
-                    readOnly = true,
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { onEndDateClick() },
+                    modifier = Modifier.weight(1f),
                     leadingIcon = {
                         Icon(Icons.Default.Event, contentDescription = null, tint = HeaderBlue)
                     },
-                    placeholder = { Text("Seleccionar", fontSize = 12.sp) },
+                    trailingIcon = {
+                        IconButton(onClick = onEndDateClick) {
+                            Icon(Icons.Default.CalendarMonth, contentDescription = "Abrir calendario", tint = HeaderBlue)
+                        }
+                    },
+                    placeholder = { Text("yyyy-MM-dd", fontSize = 12.sp) },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = HeaderBlue,
                         unfocusedBorderColor = CardBorderLilac
                     ),
-                    singleLine = true
+                    singleLine = true,
+                    enabled = !isLoading
                 )
             }
 
@@ -424,20 +541,37 @@ private fun FiltrosReporteCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(bottom = 16.dp)
             ) {
+                // Opción "Todos" primero
+                item {
+                    val isTodosSelected = selectedBloquesTech.isEmpty()
+                    FilterChip(
+                        selected = isTodosSelected,
+                        onClick = {
+                            if (!isTodosSelected) {
+                                onBloquesTechChange(emptyList())
+                            }
+                        },
+                        label = { Text("Todos", fontSize = 12.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = AccentOrange,
+                            selectedLabelColor = Color.White,
+                            containerColor = ChipUnselected
+                        ),
+                        enabled = !isLoading
+                    )
+                }
+                
+                // Bloques específicos
                 items(bloqueTechOptions) { bloque ->
                     val isSelected = selectedBloquesTech.contains(bloque)
                     FilterChip(
                         selected = isSelected,
                         onClick = {
                             onBloquesTechChange(
-                                if (bloque == "Todos") {
-                                    if (isSelected) emptyList() else listOf("Todos")
+                                if (isSelected) {
+                                    selectedBloquesTech - bloque
                                 } else {
-                                    if (isSelected) {
-                                        selectedBloquesTech - bloque
-                                    } else {
-                                        (selectedBloquesTech - "Todos") + bloque
-                                    }
+                                    selectedBloquesTech + bloque
                                 }
                             )
                         },
@@ -446,7 +580,8 @@ private fun FiltrosReporteCard(
                             selectedContainerColor = HeaderBlue,
                             selectedLabelColor = Color.White,
                             containerColor = ChipUnselected
-                        )
+                        ),
+                        enabled = !isLoading
                     )
                 }
             }
@@ -459,7 +594,10 @@ private fun FiltrosReporteCard(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(onClick = onLimpiarFiltros) {
+                TextButton(
+                    onClick = onLimpiarFiltros,
+                    enabled = !isLoading
+                ) {
                     Icon(
                         imageVector = Icons.Default.Clear,
                         contentDescription = null,
@@ -471,15 +609,24 @@ private fun FiltrosReporteCard(
                 Spacer(modifier = Modifier.width(8.dp))
                 Button(
                     onClick = onAplicarFiltros,
-                    colors = ButtonDefaults.buttonColors(containerColor = HeaderBlue)
+                    colors = ButtonDefaults.buttonColors(containerColor = HeaderBlue),
+                    enabled = !isLoading
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.FilterAlt,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.FilterAlt,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Aplicar Filtros", fontSize = 13.sp)
+                    Text(if (isLoading) "Cargando..." else "Aplicar Filtros", fontSize = 13.sp)
                 }
             }
         }
@@ -675,35 +822,52 @@ private fun DetallePorRolCard(
                 ) {
                     Text(detalle.bloqueTech, fontSize = 12.sp, modifier = Modifier.weight(1.2f))
                     Text("${detalle.solicitudes}", fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(0.7f))
-                    Text(
-                        text = "${detalle.slaPercentage}%",
-                        fontSize = 12.sp,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .weight(0.7f)
-                            .background(Color(0xFFE0E0E0), RoundedCornerShape(8.dp))
-                            .padding(vertical = 4.dp)
-                    )
-                    Text(
-                        text = "${detalle.tiempoPromedio} días",
-                        fontSize = 11.sp,
-                        textAlign = TextAlign.Center,
-                        color = Color.White,
-                        modifier = Modifier
-                            .weight(0.9f)
-                            .background(Color(0xFF29B6F6), RoundedCornerShape(8.dp))
-                            .padding(vertical = 4.dp)
-                    )
                     Box(
-                        modifier = Modifier
-                            .weight(0.5f)
-                            .size(16.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (detalle.cumple) Color(0xFF4CAF50) else Color(0xFFEF5350)
-                            ),
+                        modifier = Modifier.weight(0.7f),
                         contentAlignment = Alignment.Center
-                    ) {}
+                    ) {
+                        Text(
+                            text = "${detalle.slaPercentage}%",
+                            fontSize = 12.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .background(Color(0xFFE0E0E0), RoundedCornerShape(8.dp))
+                                .padding(vertical = 6.dp, horizontal = 8.dp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier.weight(0.9f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "${detalle.tiempoPromedio} días",
+                            fontSize = 11.sp,
+                            textAlign = TextAlign.Center,
+                            color = Color.White,
+                            modifier = Modifier
+                                .background(Color(0xFF29B6F6), RoundedCornerShape(8.dp))
+                                .padding(vertical = 6.dp, horizontal = 8.dp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier.weight(0.5f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (detalle.cumple) "✓" else "✗",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (detalle.cumple) Color(0xFF4CAF50) else Color(0xFFEF5350)
+                                )
+                                .padding(4.dp)
+                        )
+                    }
                 }
                 if (detalle != detalles.last()) {
                     Divider(color = Color(0xFFEEEEEE), thickness = 1.dp)

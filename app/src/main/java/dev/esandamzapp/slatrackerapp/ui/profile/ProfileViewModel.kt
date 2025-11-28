@@ -3,7 +3,7 @@ package dev.esandamzapp.slatrackerapp.ui.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.esandamzapp.slatrackerapp.data.repository.ProfileRepository
-import dev.esandamzapp.slatrackerapp.data.remote.dto.PerfilCompletoResponse
+import dev.esandamzapp.slatrackerapp.data.remote.dto.UsuarioDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -18,14 +18,14 @@ class ProfileViewModel : ViewModel() {
     private val _state = MutableStateFlow<ProfileState>(ProfileState.Loading)
     val state: StateFlow<ProfileState> = _state
 
-    fun loadProfile(token: String, userId: Int) {
+    fun loadProfile(userId: Int) {
         viewModelScope.launch {
             try {
                 _state.value = ProfileState.Loading
-                val data = repository.getPerfilCompleto(token, userId)
+                val data = repository.getUsuario(userId)
                 _state.value = ProfileState.Success(data)
             } catch (e: HttpException) {
-                _state.value = ProfileState.Error("Error HTTP ${e.code()}")
+                _state.value = ProfileState.Error("Error HTTP ${e.code()}: ${e.message()}")
             } catch (e: IOException) {
                 _state.value = ProfileState.Error("Sin conexión al servidor")
             } catch (e: Exception) {

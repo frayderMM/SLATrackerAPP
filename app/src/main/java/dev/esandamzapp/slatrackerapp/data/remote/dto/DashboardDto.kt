@@ -2,6 +2,16 @@ package dev.esandamzapp.slatrackerapp.data.remote.dto
 
 import com.google.gson.annotations.SerializedName
 
+// Wrapper para la respuesta del backend que viene como { "data": [...] }
+data class DashboardDataResponse(
+    @SerializedName("data") val data: List<DashboardSlaDto>
+)
+
+// Wrapper para la respuesta de estadísticas que viene como { "data": {...} }
+data class DashboardStatsResponse(
+    @SerializedName("data") val data: DashboardStatsDto
+)
+
 // Response del endpoint /api/Dashboard/sla/data
 data class DashboardSlaDto(
     @SerializedName("idSolicitud") val idSolicitud: Int,

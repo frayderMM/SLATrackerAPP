@@ -29,18 +29,37 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
                 val res = repository.login(username, password)
 
+                // Extraer userId del token JWT
+                val userId = extractUserIdFromToken(res.token)
+
                 // Guardar token en SharedPreferences
                 ApiClient.getTokenManager()?.saveToken(res.token)
-                ApiClient.getTokenManager()?.saveUserId(res.usuario.idUsuario)
+                ApiClient.getTokenManager()?.saveUserId(userId)
 
                 _loginState.value = LoginState.Success(
                     token = res.token,
-                    userId = res.usuario.idUsuario
+                    userId = userId
                 )
 
             } catch (e: Exception) {
                 _loginState.value = LoginState.Error("Credenciales incorrectas: ${e.message}")
             }
+        }
+    }
+
+    private fun extractUserIdFromToken(token: String): Int {
+        try {
+            // Decodificar el payload del JWT (segunda parte del token)
+            val parts = token.split(".")
+            if (parts.size != 3) return 0
+            
+            val payload = String(android.util.Base64.decode(parts[1], android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP))
+            
+            // Extraer el campo "UserId" del JSON
+            val userIdMatch = "\"UserId\":\"(\\d+)\"".toRegex().find(payload)
+            return userIdMatch?.groupValues?.get(1)?.toIntOrNull() ?: 0
+        } catch (e: Exception) {
+            return 0
         }
     }
 }

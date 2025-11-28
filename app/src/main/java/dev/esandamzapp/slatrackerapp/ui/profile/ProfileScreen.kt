@@ -27,7 +27,7 @@ private val OceanMain = Color(0xFF0084A8)
 private val OceanDark = Color(0xFF014A59)
 private val OceanSoftCard = Color(0xFFEBF9FF)
 private val OceanAqua = Color(0xFF00AACC)
-private val LogoutWaterRed = Color(0x33FF4646)
+private val LogoutWaterRed = Color(0x55FF4646) // Aumentado de 0x33 a 0x55 para más visibilidad
 
 @Composable
 fun ProfileScreen(
@@ -46,7 +46,7 @@ fun ProfileScreen(
     val state by vm.state.collectAsState()
 
     LaunchedEffect(Unit) {
-        vm.loadProfile(token, userId)
+        vm.loadProfile(userId)
     }
 
     Column(
@@ -68,22 +68,32 @@ fun ProfileScreen(
 
             is ProfileState.Error -> {
                 Spacer(Modifier.height(120.dp))
-                Text(
-                    text = (state as ProfileState.Error).message,
-                    color = Color.Red,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
+                Column(
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = (state as ProfileState.Error).message,
+                        color = Color.Red,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Button(onClick = { vm.loadProfile(userId) }) {
+                        Text("Reintentar")
+                    }
+                }
             }
 
             is ProfileState.Success -> {
-                val perfil = (state as ProfileState.Success).perfil
+                val usuario = (state as ProfileState.Success).usuario
 
                 // ⭐ HEADER ORIGINAL (curva exacta + imagen exacta)
-                ProfileHeaderOcean("${perfil.personal?.nombres} ${perfil.personal?.apellidos}")
+                ProfileHeaderOcean(usuario.username)
 
                 Spacer(Modifier.height(70.dp))
 
-                CardPersonalOcean(perfil)
+                CardPersonalOcean(usuario)
 
                 Spacer(Modifier.height(26.dp))
 
@@ -206,7 +216,7 @@ fun ProfileHeaderOcean(name: String) {
 // ===================================================================
 //
 @Composable
-fun CardPersonalOcean(data: PerfilCompletoResponse) {
+fun CardPersonalOcean(data: dev.esandamzapp.slatrackerapp.data.remote.dto.UsuarioDto) {
 
     Card(
         Modifier
@@ -228,18 +238,19 @@ fun CardPersonalOcean(data: PerfilCompletoResponse) {
 
             Spacer(Modifier.height(12.dp))
 
-            InfoRowOcean(R.drawable.ic_user, "Nombre completo",
-                "${data.personal?.nombres} ${data.personal?.apellidos}"
-            )
+            InfoRowOcean(R.drawable.ic_user, "Usuario", data.username)
             Divider()
 
-            InfoRowOcean(R.drawable.ic_email, "Correo", data.usuario.correo)
+            InfoRowOcean(R.drawable.ic_email, "Correo", data.correo)
             Divider()
 
-            InfoRowOcean(R.drawable.ic_document, "Documento", data.personal?.documento)
-            Divider()
-
-            InfoRowOcean(R.drawable.ic_shield, "Rol", data.rol?.nombre)
+            val rolText = when (data.idRolSistema) {
+                1 -> "Administrador"
+                2 -> "Usuario"
+                3 -> "Supervisor"
+                else -> "Rol ${data.idRolSistema}"
+            }
+            InfoRowOcean(R.drawable.ic_shield, "Rol", rolText)
         }
     }
 }

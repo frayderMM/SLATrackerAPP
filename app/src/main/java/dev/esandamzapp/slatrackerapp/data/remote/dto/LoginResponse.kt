@@ -1,8 +1,7 @@
 package dev.esandamzapp.slatrackerapp.data.remote.dto
 
 data class LoginResponse(
-    val token: String,
-    val usuario: UsuarioProfile
+    val token: String
 )
 
 data class UsuarioProfile(
