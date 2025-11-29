@@ -23,7 +23,7 @@ data class RequestData(
     val requestDate: String,
     val entryDate: String?,
     val status: RequestStatus,
-    val technologyBlock: String,
+    val technologyBlock: String, // Se mapea desde "area" o "bloqueTech" del DTO
     val priority: RequestPriority
 )
 
@@ -41,11 +41,11 @@ data class DashboardFilters(
     val endDate: LocalDate = LocalDate.now().plusYears(2),
     val slaType: List<String> = listOf("Todos"),        // Mapea a 'tipoSolicitud'
     val status: List<String> = listOf("Todos"),         // Mapea a 'cumpleSla'
-    val technologyBlock: List<String> = listOf("Todos"),// Mapea a 'bloqueTech'
+    val technologyBlock: List<String> = listOf("Todos"),// Mapea a 'area'
     val priority: List<String> = listOf("Todos")        // Mapea a 'prioridad'
 )
 
-// Estructura para métricas dinámicas
+// Estructura para métricas dinámicas (Tarjetas superiores)
 data class SlaMetric(
     val label: String,
     val percentage: Double,
@@ -54,12 +54,12 @@ data class SlaMetric(
     val averageDays: Int
 )
 
-// Estado Global del Dashboard
+// Estado Global del Dashboard (Reactive Data)
 data class DashboardKpis(
     val globalEfficacy: Double = 0.0,
     val totalRequests: Int = 0,
     val pendingRequests: Int = 0,
-    val averageDays: Int = 0, // Días promedio globales
+    val averageDays: Int = 0,
 
     val typeMetrics: List<SlaMetric> = emptyList(),
 
@@ -71,6 +71,7 @@ data class DashboardKpis(
 
 class HomeViewModel : ViewModel() {
 
+    // Estado Reactivo
     private val _requests = MutableStateFlow<List<RequestData>>(emptyList())
     val requests: StateFlow<List<RequestData>> = _requests.asStateFlow()
 
@@ -83,7 +84,7 @@ class HomeViewModel : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    // Listas maestras para dropdowns
+    // Listas maestras para dropdowns (Cargadas desde Backend)
     private val _availableBlocks = MutableStateFlow(listOf("Todos"))
     val availableBlocks: StateFlow<List<String>> = _availableBlocks.asStateFlow()
 
@@ -101,17 +102,20 @@ class HomeViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
+                // 1. Cargar filtros maestros (Catálogos)
                 fetchFiltersFromBackend()
+                // 2. Cargar datos del dashboard
                 fetchDataFromBackend()
             } catch (e: Exception) {
-                Log.e("HomeViewModel", "Error inicial: ${e.message}", e)
-                generateFallbackData("Error Red: ${e.message}")
+                Log.e("HomeViewModel", "Error en carga inicial: ${e.message}", e)
+                generateFallbackData("Error de Red: ${e.message}")
             } finally {
                 _isLoading.value = false
             }
         }
     }
 
+    // Paso: Usuario aplica filtros -> Actualizar datos
     fun updateFilters(newFilters: DashboardFilters) {
         _filters.value = newFilters
         viewModelScope.launch {
@@ -147,29 +151,35 @@ class HomeViewModel : ViewModel() {
             }
             val data = response.data
 
-            _availableBlocks.value = listOf("Todos") + data.bloquesTech
-            _availableTypes.value = listOf("Todos") + data.tiposSolicitud
-            _availablePriorities.value = listOf("Todos") + data.prioridades
+            // Usamos elvis operator por si la lista viene nula y 'trim' para limpiar espacios
+            val blocks = (data.bloquesTech ?: emptyList()).map { it.trim() }
+            val types = (data.tiposSolicitud ?: emptyList()).map { it.trim() }
+            val priorities = (data.prioridades ?: emptyList()).map { it.trim() }
+
+            _availableBlocks.value = listOf("Todos") + blocks
+            _availableTypes.value = listOf("Todos") + types
+            _availablePriorities.value = listOf("Todos") + priorities
+
+            Log.d("HomeViewModel", "Filtros cargados: ${blocks.size} áreas")
         } catch (e: Exception) {
-            Log.w("HomeViewModel", "No se cargaron filtros: ${e.message}")
+            Log.w("HomeViewModel", "No se pudieron cargar los filtros: ${e.message}")
         }
     }
 
     private suspend fun fetchDataFromBackend() {
         val currentFilters = _filters.value
 
-        // Corrección de fechas para PostgreSQL (UTC ISO format)
-        val startDateStr = "${currentFilters.startDate}T00:00:00Z"
-        val endDateStr = "${currentFilters.endDate}T23:59:59Z"
+        // Preparación de Parámetros
+        // Enviamos List<String> o null. Retrofit manejará la serialización a ?param=A&param=B
 
-        val bloqueParam = if (currentFilters.technologyBlock.isEmpty() || currentFilters.technologyBlock.contains("Todos")) null
-        else currentFilters.technologyBlock.joinToString(",")
+        val bloqueParam = if (currentFilters.technologyBlock.contains("Todos") || currentFilters.technologyBlock.isEmpty()) null
+        else currentFilters.technologyBlock
 
-        val tipoParam = if (currentFilters.slaType.isEmpty() || currentFilters.slaType.contains("Todos")) null
-        else currentFilters.slaType.joinToString(",")
+        val tipoParam = if (currentFilters.slaType.contains("Todos") || currentFilters.slaType.isEmpty()) null
+        else currentFilters.slaType
 
-        val prioParam = if (currentFilters.priority.isEmpty() || currentFilters.priority.contains("Todos")) null
-        else currentFilters.priority.joinToString(",")
+        val prioParam = if (currentFilters.priority.contains("Todos") || currentFilters.priority.isEmpty()) null
+        else currentFilters.priority
 
         val cumpleParam: Boolean? = when {
             currentFilters.status.contains("CUMPLE") && !currentFilters.status.contains("NO_CUMPLE") -> true
@@ -177,24 +187,30 @@ class HomeViewModel : ViewModel() {
             else -> null
         }
 
-        Log.d("HomeViewModel", "Requesting: $startDateStr a $endDateStr")
+        // Formato UTC para evitar errores de PostgreSQL con DateTime
+        val startDateStr = "${currentFilters.startDate}T00:00:00Z"
+        val endDateStr = "${currentFilters.endDate}T23:59:59Z"
 
+        Log.d("HomeViewModel", "Consultando datos... Bloques: $bloqueParam")
+
+        // Llamada a la API
         val apiResponse = withContext(Dispatchers.IO) {
             RetrofitClient.api.getSlaData(
                 startDate = startDateStr,
                 endDate = endDateStr,
-                bloqueTech = bloqueParam,
+                bloqueTech = bloqueParam,   // Mapeado a "area" en SlaApiService
                 tipoSolicitud = tipoParam,
                 prioridad = prioParam,
                 cumpleSla = cumpleParam
             )
         }
 
+        // Procesamiento de datos (Mapeo DTO -> UI)
         val mappedData = apiResponse.data.mapNotNull { dto ->
             try {
                 mapDtoToUiModel(dto)
             } catch (e: Exception) {
-                Log.e("HomeViewModel", "Error mapeo ID ${dto.id}")
+                Log.e("HomeViewModel", "Error mapeando registro ID ${dto.id}: ${e.message}")
                 null
             }
         }
@@ -206,7 +222,7 @@ class HomeViewModel : ViewModel() {
     private fun mapDtoToUiModel(dto: SlaRequestDto): RequestData {
         val rawPrio = dto.prioridad ?: "Media"
         val prioEnum = try {
-            when(rawPrio.uppercase()) {
+            when(rawPrio.trim().uppercase()) {
                 "CRITICA", "CRÍTICA" -> RequestPriority.CRITICA
                 "ALTA" -> RequestPriority.ALTA
                 "MEDIA" -> RequestPriority.MEDIA
@@ -225,18 +241,19 @@ class HomeViewModel : ViewModel() {
 
         val fechaSafe = dto.fechaSolicitud ?: LocalDate.now().toString()
         val rawDate = if (fechaSafe.length >= 10) fechaSafe.take(10) else fechaSafe
+
         val ingresoSafe = dto.fechaIngreso
         val rawEntryDate = if (ingresoSafe != null && ingresoSafe.length >= 10) ingresoSafe.take(10) else ingresoSafe
 
         return RequestData(
             id = dto.id.toString(),
             title = "${dto.tipoSolicitud ?: "Gral"} - ${dto.nombrePersonal ?: "N/A"}",
-            requestType = dto.tipoSolicitud ?: "General",
+            requestType = dto.tipoSolicitud?.trim() ?: "General",
             daysInProcess = dto.diasTranscurridos,
             requestDate = rawDate,
             entryDate = rawEntryDate,
             status = statusEnum,
-            technologyBlock = dto.bloqueTech ?: "Sin Asignar",
+            technologyBlock = dto.bloqueTech?.trim() ?: "Sin Asignar",
             priority = prioEnum
         )
     }
@@ -252,10 +269,9 @@ class HomeViewModel : ViewModel() {
         val globalComplying = data.count { it.status == RequestStatus.CUMPLE }
         val globalEfficacy = if (total > 0) (globalComplying.toDouble() / total) * 100 else 0.0
         val pending = data.count { it.status == RequestStatus.PENDIENTE }
-
-        // CORRECCIÓN AQUÍ: Definimos la variable local como 'avgDays'
         val avgDays = if (total > 0) data.map { it.daysInProcess }.average().toInt() else 0
 
+        // Métricas dinámicas por Tipo de Solicitud (Tarjetas superiores)
         val metricsByType = data.groupBy { it.requestType }.map { (type, requests) ->
             val subTotal = requests.size
             val subComplying = requests.count { it.status == RequestStatus.CUMPLE }
@@ -271,7 +287,9 @@ class HomeViewModel : ViewModel() {
             )
         }.sortedByDescending { it.totalCount }
 
-        // Gráfico 1: Bloques
+        // Gráfico 1: Por Bloque/Área
+        // Si no hay filtro específico, usamos la lista maestra para mostrar todas las áreas (incluso con 0%)
+        // Si hay filtro, mostramos solo las áreas presentes en la data filtrada.
         val blocksSource = if (_availableBlocks.value.size > 1 && (_filters.value.technologyBlock.contains("Todos") || _filters.value.technologyBlock.isEmpty())) {
             _availableBlocks.value.filter { it != "Todos" }
         } else {
@@ -279,11 +297,11 @@ class HomeViewModel : ViewModel() {
         }
 
         val complianceByBlock = blocksSource.associateWith { block ->
-            val reqs = data.filter { it.technologyBlock == block }
+            val reqs = data.filter { it.technologyBlock.equals(block, ignoreCase = true) }
             if (reqs.isNotEmpty()) (reqs.count { it.status == RequestStatus.CUMPLE } * 100) / reqs.size else 0
         }
 
-        // Gráfico 2: Prioridades
+        // Gráfico 2: Por Prioridad
         val prioritiesSource = if (_availablePriorities.value.size > 1 && (_filters.value.priority.contains("Todos") || _filters.value.priority.isEmpty())) {
             _availablePriorities.value.filter { it != "Todos" }
         } else {
@@ -301,7 +319,7 @@ class HomeViewModel : ViewModel() {
             globalEfficacy = globalEfficacy,
             totalRequests = total,
             pendingRequests = pending,
-            averageDays = avgDays, // Asignamos la variable local 'avgDays' al parámetro 'averageDays'
+            averageDays = avgDays,
             typeMetrics = metricsByType,
             complianceByBlock = complianceByBlock,
             complianceByPriority = complianceByPriority,
@@ -311,7 +329,7 @@ class HomeViewModel : ViewModel() {
 
     private fun generateFallbackData(errorMessage: String) {
         val mock = listOf(
-            RequestData("ERR", errorMessage, "ERROR SERVER", 0, "2025-01-01", null, RequestStatus.RIESGO, "Logs", RequestPriority.CRITICA)
+            RequestData("ERR", errorMessage, "ERROR RED", 0, "2025-01-01", null, RequestStatus.RIESGO, "Backend", RequestPriority.CRITICA)
         )
         _requests.value = mock
         recalculateKpis(mock)

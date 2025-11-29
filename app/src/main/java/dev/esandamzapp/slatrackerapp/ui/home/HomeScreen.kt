@@ -36,18 +36,39 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-// --- Colores del Tema ---
+// --- Colores del Tema Singula ---
 val BgBody = Color(0xFFF3F4F6)
 val BgCard = Color(0xFFFFFFFF)
 val PrimaryDark = Color(0xFF1F2937)
 val TextPrimary = Color(0xFF111827)
 val TextSecondary = Color(0xFF6B7280)
-val AccentBlue = Color(0xFF3B82F6)
-val AccentOrange = Color(0xFFE67E22)
+val AccentBlue = Color(0xFF3B82F6)   // Para gráfico de Roles (Base)
+val AccentOrange = Color(0xFFE67E22) // Para gráfico de Prioridad (Base)
 val StatusSuccess = Color(0xFF10B981)
 val StatusWarning = Color(0xFFF59E0B)
 val StatusDanger = Color(0xFFEF4444)
 val StatusPurple = Color(0xFF8B5CF6)
+
+// Paleta de colores variados para el gráfico de Roles (Tonos oscuros y visibles)
+val ChartColors = listOf(
+    Color(0xFF1565C0), // Azul Fuerte
+    Color(0xFF2E7D32), // Verde Oscuro
+    Color(0xFFC62828), // Rojo Oscuro
+    Color(0xFFF9A825), // Amarillo Oscuro
+    Color(0xFF6A1B9A), // Púrpura
+    Color(0xFF00838F), // Cian
+    Color(0xFFAD1457), // Rosa
+    Color(0xFF455A64)  // Gris Azulado
+)
+
+// Mapa de colores intuitivos para Prioridades (Semáforo)
+val PriorityColors = mapOf(
+    "CRITICA" to Color(0xFFDC2626),  // Rojo Intenso
+    "CRÍTICA" to Color(0xFFDC2626),  // Variante con tilde
+    "ALTA" to Color(0xFFEA580C),     // Naranja
+    "MEDIA" to Color(0xFFEAB308),    // Amarillo Ámbar
+    "BAJA" to Color(0xFF16A34A)      // Verde
+)
 
 @Composable
 fun HomeScreen(navController: NavController, homeViewModel: HomeViewModel = viewModel()) {
@@ -56,6 +77,7 @@ fun HomeScreen(navController: NavController, homeViewModel: HomeViewModel = view
     val filters by homeViewModel.filters.collectAsState()
     val isLoading by homeViewModel.isLoading.collectAsState()
 
+    // Listas dinámicas para filtros (Desde BD)
     val availableBlocks by homeViewModel.availableBlocks.collectAsState()
     val availableTypes by homeViewModel.availableTypes.collectAsState()
     val availablePriorities by homeViewModel.availablePriorities.collectAsState()
@@ -68,8 +90,10 @@ fun HomeScreen(navController: NavController, homeViewModel: HomeViewModel = view
                     .padding(padding)
                     .verticalScroll(scrollState)
             ) {
+                // Header
                 DashboardHeader(notificationsCount = kpis.pendingRequests)
 
+                // Filtros Expandibles
                 Box(
                     modifier = Modifier
                         .offset(y = (-60).dp)
@@ -85,11 +109,13 @@ fun HomeScreen(navController: NavController, homeViewModel: HomeViewModel = view
                     )
                 }
 
+                // Contenido Principal
                 Column(
                     modifier = Modifier
                         .offset(y = (-40).dp)
                         .padding(horizontal = 20.dp)
                 ) {
+                    // 1. Tarjetas Dinámicas (Por Tipo de Solicitud)
                     if (kpis.typeMetrics.isNotEmpty()) {
                         kpis.typeMetrics.chunked(2).forEach { rowMetrics ->
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -102,6 +128,7 @@ fun HomeScreen(navController: NavController, homeViewModel: HomeViewModel = view
                         }
                     }
 
+                    // 2. Tarjetas Fijas (Eficacia y Total)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         Box(modifier = Modifier.weight(1f)) {
                             GlobalKpiCard(
@@ -125,28 +152,66 @@ fun HomeScreen(navController: NavController, homeViewModel: HomeViewModel = view
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    ChartCard("Cumplimiento SLA por Rol", "Porcentaje de cumplimiento por área tecnológica") {
-                        SimpleBarChart(kpis.complianceByBlock, AccentBlue)
+                    // 3. Gráficos
+
+                    // A. Por Rol (Multicolor)
+                    ChartCard(
+                        title = "Cumplimiento SLA por Rol",
+                        subtitle = "Porcentaje de cumplimiento por área tecnológica"
+                    ) {
+                        SimpleBarChart(
+                            data = kpis.complianceByBlock,
+                            barColor = AccentBlue,
+                            multiColors = ChartColors
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    ChartCard("Cumplimiento SLA por Prioridad", "Porcentaje de cumplimiento según nivel de prioridad") {
-                        SimpleBarChart(kpis.complianceByPriority, AccentOrange)
+                    // B. Por Prioridad (Colores Semánticos)
+                    ChartCard(
+                        title = "Cumplimiento SLA por Prioridad",
+                        subtitle = "Porcentaje de cumplimiento según nivel de prioridad"
+                    ) {
+                        SimpleBarChart(
+                            data = kpis.complianceByPriority,
+                            barColor = AccentOrange,
+                            colorMapping = PriorityColors // Usamos el mapa de colores rojo/naranja/verde
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // C. Distribución (Donut)
+                    ChartCard(
+                        title = "Estado Actual",
+                        subtitle = "Distribución de tickets"
+                    ) {
+                        SimpleDonutChart(
+                            data = kpis.statusDistribution
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(40.dp))
                 }
             }
 
+            // Loading Overlay
             if (isLoading) {
-                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(0.3f)).clickable(enabled = false) {}, contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier.fillMaxSize()
+                        .background(Color.Black.copy(0.3f))
+                        .clickable(enabled = false) {},
+                    contentAlignment = Alignment.Center
+                ) {
                     CircularProgressIndicator(color = AccentBlue, trackColor = Color.White)
                 }
             }
         }
     }
 }
+
+// --- Componentes UI ---
 
 @Composable
 fun TypeMetricCard(metric: SlaMetric) {
@@ -196,7 +261,12 @@ fun ChartCard(title: String, subtitle: String, content: @Composable () -> Unit) 
 }
 
 @Composable
-fun SimpleBarChart(data: Map<String, Int>, barColor: Color) {
+fun SimpleBarChart(
+    data: Map<String, Int>,
+    barColor: Color = AccentBlue,
+    multiColors: List<Color>? = null,
+    colorMapping: Map<String, Color>? = null
+) {
     if (data.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -210,16 +280,31 @@ fun SimpleBarChart(data: Map<String, Int>, barColor: Color) {
     Canvas(modifier = Modifier.fillMaxSize()) {
         val barWidth = size.width / (data.size * 2f)
         val spacing = size.width / (data.size + 1)
+
         data.entries.forEachIndexed { index, entry ->
             val percentage = entry.value / 100f
             val barHeight = size.height * percentage
             val xPos = (spacing * (index + 1)) - (barWidth / 2)
-            val color = if (entry.value < 50) StatusDanger else barColor
-            drawRect(color = color, topLeft = Offset(xPos, size.height - barHeight), size = Size(barWidth, barHeight))
+
+            val mappedColor = colorMapping?.entries?.find { it.key.equals(entry.key, ignoreCase = true) }?.value
+            val finalColor = if (mappedColor != null) {
+                mappedColor
+            } else {
+                val base = multiColors?.get(index % multiColors.size) ?: barColor
+                if (entry.value < 50) StatusDanger else base
+            }
+
+            // CORRECCIÓN VISUAL: Altura mínima de 6px si hay un valor 0% para que se vea la barra "fallida"
+            // Si el porcentaje es 0, dibujamos una línea base para indicar "0 cumplimiento"
+            val drawnHeight = if (barHeight < 6f) 6f else barHeight
+
+            drawRect(color = finalColor, topLeft = Offset(xPos, size.height - drawnHeight), size = Size(barWidth, drawnHeight))
         }
     }
     Row(modifier = Modifier.fillMaxSize().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.Bottom) {
-        labels.forEach { Text(it.take(3), style = MaterialTheme.typography.labelSmall, color = TextSecondary) }
+        labels.forEach {
+            Text(it.take(3), style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+        }
     }
 }
 
@@ -248,6 +333,7 @@ fun SimpleDonutChart(data: Map<String, Int>) {
                         "NO_CUMPLE" -> StatusDanger
                         "RIESGO" -> StatusDanger
                         "PENDIENTE" -> StatusWarning
+                        "ESCALADO" -> StatusPurple
                         else -> Color.Gray
                     }
                     drawArc(color, startAngle, sweepAngle, false, style = Stroke(strokeWidth))
@@ -262,6 +348,7 @@ fun SimpleDonutChart(data: Map<String, Int>) {
     }
 }
 
+// --- Header y Filtros ---
 @Composable
 fun DashboardHeader(notificationsCount: Int) {
     Box(
@@ -322,7 +409,7 @@ fun AdvancedFilterSection(
                         }
                     }
 
-                    FilterSectionTitle("Bloque Tecnológico")
+                    FilterSectionTitle("Areas")
                     ChipGrid(blocks, filters.technologyBlock) { opt ->
                         onFiltersChanged(filters.copy(technologyBlock = onToggleOption(filters.technologyBlock, opt)))
                     }
@@ -338,7 +425,6 @@ fun AdvancedFilterSection(
                     }
 
                     FilterSectionTitle("Cumplimiento")
-                    // Se limita a las opciones binarias requeridas
                     val statusOptions = listOf("CUMPLE", "NO_CUMPLE")
                     ChipGrid(listOf("Todos") + statusOptions, filters.status) { opt ->
                         onFiltersChanged(filters.copy(status = onToggleOption(filters.status, opt)))
